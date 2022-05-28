@@ -7,7 +7,7 @@ class FormatFunction:
 
     def __init__(self, global_value) -> None:
         self.global_value = global_value
-        self.rng = tf.random.Generator.from_seed(123, alg='philox')
+        self.rng = tf.random.Generator.from_non_deterministic_state()
 
     def get_label_as_string(self,file_path):
         return file_path, tf.strings.split(file_path, os.path.sep)[-2]
@@ -81,11 +81,15 @@ class FormatFunction:
     
     def augment_data(self, image, label):
         seed = self.rng.make_seeds(2)[0]
-
+        
         image = tf.image.stateless_random_brightness(image, max_delta=0.2, seed=seed)
         image = tf.image.stateless_random_contrast(image, lower=0.2, upper=0.5, seed=seed)
+        image = tf.image.stateless_random_crop(image, size = [int(self.global_value.IMAGE_SIZE[0] * (80/100)),int(self.global_value.IMAGE_SIZE[1]*(80/100)), 3], seed=seed)
+        image = tf.image.resize(image, self.global_value.IMAGE_SIZE)
+        
         image = tf.image.stateless_random_flip_left_right(image, seed = seed)
         image = tf.image.stateless_random_flip_up_down(image, seed = seed)
+        image = tf.image.stateless_random_jpeg_quality(image, 75, 95, seed)
 
         return image, label
     def get_label_dict(self,img_dir):

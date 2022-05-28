@@ -49,6 +49,7 @@ class MainApp():
         self.frame = None
         self.window = None
         self.pannel_capture = None
+        self.pannel_notice = None
         self.capture_button = None
         self.train_button =None
         self.name_text = None
@@ -67,6 +68,9 @@ class MainApp():
 
         self.pannel_capture = tk.Label(self.window, text = "helo")
         self.pannel_capture.place(relwidth = 1, relheight = 0.9, relx = 0, rely = 0, anchor=tk.NW)
+
+        self.pannel_notice = tk.Label(self.window, text = ".....")
+        self.pannel_notice.place(relwidth = 1, relheight = 0.05, relx = 0, rely = 0.8, anchor=tk.NW)
 
         self.capture_button = tk.Button(self.window, text = "capture", command=self.capture_picture)
         self.capture_button.place(relwidth = 0.2, relheight = 0.05, relx = 0.1, rely = 0.9, anchor=tk.NW)
@@ -104,13 +108,13 @@ class MainApp():
                         bottom = bounding_box[3]
                         face_to_recognize = image[top:bottom,left:right,:]
                         face_to_recognize,_ = self.format_function.process_imagev2(face_to_recognize)
-                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.85)
+                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8)
                         if is_mask[idx] == 0:#have mask
                             image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
-                            image = cv2.putText(image, "mask "+label,(left,bottom), cv2.FONT_ITALIC, 1, (0,255,0), 1, cv2.LINE_AA)
+                            image = cv2.putText(image, "mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (0,255,0), 1, cv2.LINE_AA)
                         else:#no mask
-                            image = cv2.rectangle(image,(left,top), (right,bottom), (255,0,0), 3)
-                            image = cv2.putText(image, "no mask "+label,(left,bottom), cv2.FONT_ITALIC, 1, (255,0,0), 1, cv2.LINE_AA)
+                            image = cv2.rectangle(image,(left,top), (right,bottom), (255,255,0), 3)
+                            image = cv2.putText(image, "no mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (255,255,0), 1, cv2.LINE_AA)
         
         # display image into GUI
         image = Image.fromarray(image)
@@ -126,8 +130,6 @@ class MainApp():
         image = self.frame.copy()
         bounding_boxes,_ = self.face_mask_detector.detect_face(image)
         people_name = self.name_text.get("1.0", "end").strip("\n")
-        for box in bounding_boxes:
-            print(box)
         if len(bounding_boxes)== 1 and people_name !="":
             for bounding_box in bounding_boxes:
                 left = bounding_box[0]
@@ -143,8 +145,10 @@ class MainApp():
                 if not os.path.isdir(dir_path):
                     os.mkdir(dir_path)
                 file_path = os.path.join(dir_path, filename)
+                print(file_path)
                 cv2.imwrite(file_path, image)
-                print("save picture successfully")
+                self.pannel_notice.config(text = "save picture successfully!!!")
+                self.pannel_notice.after(800, lambda : self.pannel_notice.config(text = "....."))
     
     def on_close(self):
         self.window.quit()
@@ -165,13 +169,14 @@ class MainApp():
         
     
     def train(self):
-        print("total data: ",len(self.embedding))
+        self.pannel_notice.config(text = "total data: {}".format(len(self.embedding)))
         database_embedding = self.classify.embedding_all_data_by_directoryV2(self.output_path)
-        print("done embedding, waiting for saving")
+        self.pannel_notice.config(text = "done embedding, waiting for saving")
         for item in database_embedding.items():
             self.embedding[item[0]] = item[1]
         self.classify.save_embedding_to_file(self.embedding, self.embedding_path)
-        print("done saving")
+        self.pannel_notice.config(text = "done saving")
+        self.pannel_notice.after(800, lambda : self.pannel_notice.config(text = "....."))
 
 
 def main():

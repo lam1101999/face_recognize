@@ -66,6 +66,6 @@ def convert_train_model_to_embedding(train_model):
     return face_net_model
 
 if __name__ == "__main__":
-    a = call_instance_FaceNet_without_custom([100,100,3])
+    a = call_instance_FaceNet_without_custom([110,110,3])
     print(type(a))
     a.summary()
