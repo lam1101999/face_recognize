@@ -36,7 +36,7 @@ class FormatFunction:
         return image, label
     
     def open_and_process_image_Pillow(self, path):
-        image = Image.open(path)
+        image = Image.open(path).convert("RGB")
         image = image.resize(self.global_value.IMAGE_SIZE)
         image = np.asarray(image)
         image = image/255
