@@ -51,7 +51,7 @@ class FormatFunction:
         return image,label
 
 
-    def get_dataset_partition(self, dataset, train_percentage, test_percentage, valid_percentage, shuffle = True, shuffle_size = 100):
+    def get_dataset_partition(self, dataset, train_percentage, test_percentage, valid_percentage = 0, shuffle = True, shuffle_size = 100):
         dataset_size = len(dataset)
 
         if shuffle == True:

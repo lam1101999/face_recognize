@@ -1,4 +1,3 @@
-
 import cv2
 import os
 import numpy as np
@@ -95,7 +94,7 @@ class MainApp():
                         left,top,right,bottom = self.face_detector.get_coordinate_margin(bounding_box,self.margin, image.shape[1], image.shape[0])
                         face_to_recognize = image[top:bottom,left:right,:]
                         face_to_recognize,_ = self.format_function.process_imagev2(face_to_recognize)
-                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 1)
+                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8)
                         image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
                         image = cv2.putText(image, label,(left,bottom), cv2.FONT_ITALIC, 1, (0,255,0), 1, cv2.LINE_AA)
             elif self.detect_method == 1:
@@ -111,10 +110,10 @@ class MainApp():
                         label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8)
                         if is_mask[idx] == 0:#have mask
                             image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
-                            image = cv2.putText(image, "mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (0,255,0), 1, cv2.LINE_AA)
+                            image = cv2.putText(image, "mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (0,255,0), 2, cv2.LINE_AA)
                         else:#no mask
-                            image = cv2.rectangle(image,(left,top), (right,bottom), (255,255,0), 3)
-                            image = cv2.putText(image, "no mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (255,255,0), 1, cv2.LINE_AA)
+                            image = cv2.rectangle(image,(left,top), (right,bottom), (255,100,0), 3)
+                            image = cv2.putText(image, "no mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (255,100,0), 2, cv2.LINE_AA)
         
         # display image into GUI
         image = Image.fromarray(image)
@@ -183,8 +182,9 @@ def main():
     #Init value
     cap = cv2.VideoCapture(0)
     output_path = os.path.join(os.getcwd(),"data_base_image")
-    model_path = os.path.join(os.getcwd(),"models", "model47.h5")
-    data_base_path = os.path.join(os.getcwd(), "data_base_encoding","face_encoding47.pkl")
+    model_path = os.path.join(os.getcwd(),"models", "model49.h5")
+    data_base_path = os.path.join(os.getcwd(), "data_base_encoding","nothing.pkl")
+    # data_base_path = os.path.join(os.getcwd(), "data_base_encoding","49_align_encode.pkl")
     face_detector = FaceDetector()
     face_mask_detector = FaceMaskDetector(os.path.join(os.getcwd(), "models","face_mask_detection.pb"))
 

@@ -125,16 +125,22 @@ class ClassifyForPytorch:
         return list_name
     
     def evaluatev1(self, list_path, embedding, thresh_hold = 4):
-        right_predict = 0
+        unknow_answer = 0
+        right_answer = 0
+        mis_answer = 0
+        total_answer = len(list_path)
 
         for each_path in tqdm(list_path, ascii=" *"):
             actual_label = each_path.split(os.path.sep)[-2]
             image = self.format_function.open_and_process_image_Pillow(each_path)
             predicted_label = self.detect_one_image(image, embedding)
-            if (predicted_label != "unknow" and predicted_label == actual_label):
-                right_predict += 1
-        print(right_predict)
-        return right_predict/len(list_path)
+            if (predicted_label == "unknow"):
+                unknow_answer +=1
+            elif (predicted_label == actual_label):
+                right_answer +=1
+            else:
+                mis_answer +=1
+        return right_answer, unknow_answer, mis_answer, total_answer
 
     
 
@@ -161,9 +167,8 @@ def main():
     list_path_mask = file_function.getPath(data_directory2)
     list_path.extend(list_path_mask)
     # Evaluate
-    accuracy = classify.evaluatev1(list_path_mask, database_embedding_facenet_pytorch)
-    print(accuracy)
+    right_answer, unknow_answer, mis_answer, total_answer = classify.evaluatev1(list_path_mask, database_embedding_facenet_pytorch, 0.7)
+    print("right_predict {}, unknow_answer {}, mis_answer {}, total_answer {}".format(right_answer, unknow_answer, mis_answer, total_answer))
 
-    #Jiang_Zemin
 if __name__ == "__main__":
     main()

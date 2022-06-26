@@ -109,7 +109,7 @@ class Classify:
     def detect_one_image(self, image, embedding, thresh_hold = 4):
         image = np.expand_dims(image,0)
         encode = self.model.predict(image)[0]
-        name = "unknow"
+        name = "unknown"
         distance = float("inf")
         for db_name, db_encode in embedding.items():
             dist = euclidean(db_encode, encode)
@@ -121,10 +121,10 @@ class Classify:
         list_name = list()
         encode = self.model.predict(dataset)
         for each_encode in tqdm(encode, ascii=" *"):
-            name = "unknow"
+            name = "unknown"
             distance = float("inf")
             for db_name, db_encode in embedding.items():
-                dist = euclidean(db_encode, each_encode)
+                dist = cosine(db_encode, each_encode)
                 if dist < thresh_hold and dist < distance:
                     name = db_name
                     distance = dist
@@ -133,18 +133,25 @@ class Classify:
         return list_name
     
     def evaluate(self, dataset, embedding, thresh_hold = 4):
-        right_predict = 0
+        unknow_answer = 0
+        right_answer = 0
+        mis_answer = 0 
         list_real_label = list()
         for _, label_batch in tqdm(dataset, ascii=" *"):
             for label in label_batch:
                 list_real_label.append(label)
-        
+        total_answer = len(list_real_label)
         list_predict_label = self.detect_on_dataset(dataset, embedding, thresh_hold)
 
         for i in range(len(list_real_label)):
-            if (list_predict_label[i] != "unknow" and list_real_label[i] == list_predict_label[i]):
-                right_predict += 1
-        return right_predict/len(list_real_label)
+            if (list_predict_label[i] == "unknown"):
+                unknow_answer +=1
+            elif (list_predict_label[i] == list_real_label[i]):
+                right_answer +=1
+            else:
+                mis_answer +=1
+
+        return right_answer, unknow_answer, mis_answer, total_answer
 
     
 
