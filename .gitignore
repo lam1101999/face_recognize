@@ -7,7 +7,6 @@ face+mask_image
 10_person
 checkpoint
 save_model
-number_mnist_48
 encodings
 dataset
 src/

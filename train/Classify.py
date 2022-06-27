@@ -22,11 +22,13 @@ class Classify:
         encodes = self.model.predict(dataset)
         if encodes.any():
             encodes = np.average(encodes, axis=0 )
+            encodes = encodes/np.linalg.norm(encodes)
         return encodes
     def embedding_data_one_labelV2(self, data):
         encodes = self.model.predict(data)
         if encodes.any():
             encodes = np.average(encodes, axis=0 )
+            encodes = encodes/np.linalg.norm(encodes)
         return encodes
 
     def embedding_one_data_by_directory(self, one_data_directory, encoding_dictionary = dict(), probability_train = None):
@@ -68,7 +70,7 @@ class Classify:
         encoding_dictionary = dict()
         path_to_each_folder = self.file_function.getSubDir(all_data_directory)
 
-        #work with iamge each person
+        #work with image each person
         for each_folder in tqdm(path_to_each_folder, ascii=" *"):
             data = list()
             label  = each_folder.split(os.path.sep)[-1]
