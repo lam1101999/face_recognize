@@ -65,6 +65,7 @@ def convert_train_model_to_embedding(train_model):
     face_net_model = tf.keras.Model(cut_the_last_layer.input, outputs, name="FaceNetModel")
     return face_net_model
 
+
 if __name__ == "__main__":
     a = call_instance_FaceNet_without_custom([110,110,3])
     print(type(a))

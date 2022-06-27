@@ -133,7 +133,7 @@ class ClassifyForPytorch:
         for each_path in tqdm(list_path, ascii=" *"):
             actual_label = each_path.split(os.path.sep)[-2]
             image = self.format_function.open_and_process_image_Pillow(each_path)
-            predicted_label = self.detect_one_image(image, embedding)
+            predicted_label = self.detect_one_image(image, embedding, thresh_hold)
             if (predicted_label == "unknow"):
                 unknow_answer +=1
             elif (predicted_label == actual_label):
@@ -142,6 +142,76 @@ class ClassifyForPytorch:
                 mis_answer +=1
         return right_answer, unknow_answer, mis_answer, total_answer
 
+
+    def evaluate_using_confusion_matrix(self,list_path,embedding, thresh_hold = 4):
+        matrix = self.calculate_confusion_matrix(list_path,embedding, thresh_hold)
+        precision, recall, accuracy,f1 = self.calculate_precision_recall_accuracy_f1_from_matrix(matrix)
+        return precision, recall, accuracy,f1
+    
+    def calculate_confusion_matrix(self, list_path, embedding, thresh_hold = 4):
+
+        # Initialize Confusion Matrix (row is real label, column is predict label so precision is column, recall is row)
+        total_label = len(embedding)
+        matrix = np.zeros((total_label, total_label))
+
+
+        # give label an offset to work with matrix
+        off_set = 0
+        off_set_dictionary = dict()
+        for key in embedding.keys():
+            off_set_dictionary[key] = off_set
+            off_set+=1
+
+        # Predict label
+        for each_path in tqdm(list_path, ascii=" *"):
+            real_label = each_path.split(os.path.sep)[-2]
+            image = self.format_function.open_and_process_image_Pillow(each_path)
+            predict_label = self.detect_one_image(image, embedding, thresh_hold)
+
+            #Assign value to matrix    
+            offset_row = off_set_dictionary[real_label]
+            offset_column = off_set_dictionary[predict_label]
+            matrix[offset_row, offset_column] = matrix[offset_row, offset_column]+1
+
+        return matrix
+    def calculate_precision_recall_accuracy_f1_from_matrix(self, confusion_matrix):
+        one_size_matrix = len(confusion_matrix)
+
+        #calculate precision we will calculate precision of each label then get average, ignore that label if that label does not have prediction(sum column = 0)
+        total_label_have_precision = 0
+        total_precision = 0
+        for i in range(one_size_matrix):
+            total_value_predict_as_i = np.sum(confusion_matrix[:,i])
+            total_value_i_predict_as_i = confusion_matrix[i,i]
+            if total_value_predict_as_i != 0:
+                precision_i = total_value_i_predict_as_i/total_value_predict_as_i
+                total_precision += precision_i
+                total_label_have_precision += 1
+        precision = total_precision/total_label_have_precision
+
+        #calculate recall we will calculate recall of each label then get average, ignore that label if that label does not have recall(sum row = 0)
+        total_label_have_recall = 0
+        total_recall = 0
+        for i in range(one_size_matrix):
+            total_value_is_i = np.sum(confusion_matrix[i])
+            total_value_i_predict_as_i = confusion_matrix[i,i]
+            if total_value_is_i != 0:
+                recall_i = total_value_i_predict_as_i/total_value_is_i
+                total_recall += recall_i
+                total_label_have_recall += 1
+        recall = total_recall/total_label_have_recall
+
+        #calculate accuracy
+        total_right_answers = 0
+        for i in range(one_size_matrix):
+            total_right_answers += confusion_matrix[i,i]
+        total_answers = np.sum(confusion_matrix)
+        accuracy = total_right_answers/total_answers
+
+        #calculate f1
+        f1 = 2*(precision*recall)/(precision+recall)
+
+        return precision, recall, accuracy,f1
     
 
 def main():
@@ -165,10 +235,12 @@ def main():
     # get image path
     list_path = file_function.getPath(data_directory1)
     list_path_mask = file_function.getPath(data_directory2)
-    list_path.extend(list_path_mask)
     # Evaluate
-    right_answer, unknow_answer, mis_answer, total_answer = classify.evaluatev1(list_path_mask, database_embedding_facenet_pytorch, 0.7)
-    print("right_predict {}, unknow_answer {}, mis_answer {}, total_answer {}".format(right_answer, unknow_answer, mis_answer, total_answer))
+    precision, recall, accuracy,f1 = classify.evaluate_using_confusion_matrix(list_path, database_embedding_facenet_pytorch, 4)
+    print("no mask: precision {}, recall {}, accuracy {}, f1 {}".format(precision, recall, accuracy, f1))
+
+    precision, recall, accuracy,f1 = classify.evaluate_using_confusion_matrix(list_path_mask, database_embedding_facenet_pytorch, 4)
+    print("mask: precision {}, recall {}, accuracy {}, f1 {}".format(precision, recall, accuracy, f1))
 
 if __name__ == "__main__":
     main()

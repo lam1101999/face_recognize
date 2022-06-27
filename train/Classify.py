@@ -9,6 +9,7 @@ import pickle
 from scipy.spatial.distance import cosine, euclidean
 from tqdm import tqdm
 import time
+from train.FaceNet import call_instance_FaceNet_with_last_isDense, convert_train_model_to_embedding
 class Classify:
     def __init__(self, model, format_function):
         self.model = model
@@ -152,16 +153,106 @@ class Classify:
                 mis_answer +=1
 
         return right_answer, unknow_answer, mis_answer, total_answer
+    
+    def evaluate_using_confusion_matrix(self,datset,embedding, thresh_hold = 4):
+        matrix = self.calculate_confusion_matrix(datset,embedding, thresh_hold)
+        precision, recall, accuracy,f1 = self.calculate_precision_recall_accuracy_f1_from_matrix(matrix)
+        return precision, recall, accuracy,f1
+    
+    def calculate_confusion_matrix(self, dataset, embedding, thresh_hold = 4):
+
+        # Initialize Confusion Matrix (row is real label, column is predict label so precision is column, recall is row)
+        total_label = len(embedding)
+        matrix = np.zeros((total_label, total_label))
+
+
+        # give label an offset to work with matrix
+        off_set = 0
+        off_set_dictionary = dict()
+        for key in embedding.keys():
+            off_set_dictionary[key] = off_set
+            off_set+=1
+        # Get list real label
+        list_real_label = list()
+        for _, label_batch in tqdm(dataset, ascii=" *"):
+            for label in label_batch:
+                list_real_label.append(label)
+        # Get list predict label 
+        list_predict_label = self.detect_on_dataset(dataset, embedding, thresh_hold)
+
+        # Assign value to matrix
+        for i in range(len(list_real_label)):
+            real_label = list_real_label[i].numpy()
+            real_label = real_label.decode("ascii")
+            predict_label = list_predict_label[i]
+            offset_row = off_set_dictionary[real_label]
+            offset_column = off_set_dictionary[predict_label]
+            matrix[offset_row, offset_column] = matrix[offset_row, offset_column]+1
+
+        return matrix
+    def calculate_precision_recall_accuracy_f1_from_matrix(self, confusion_matrix):
+        one_size_matrix = len(confusion_matrix)
+
+        #calculate precision we will calculate precision of each label then get average, ignore that label if that label does not have prediction(sum column = 0)
+        total_label_have_precision = 0
+        total_precision = 0
+        for i in range(one_size_matrix):
+            total_value_predict_as_i = np.sum(confusion_matrix[:,i])
+            total_value_i_predict_as_i = confusion_matrix[i,i]
+            if total_value_predict_as_i != 0:
+                precision_i = total_value_i_predict_as_i/total_value_predict_as_i
+                total_precision += precision_i
+                total_label_have_precision += 1
+        precision = total_precision/total_label_have_precision
+
+        #calculate recall we will calculate recall of each label then get average, ignore that label if that label does not have recall(sum row = 0)
+        total_label_have_recall = 0
+        total_recall = 0
+        for i in range(one_size_matrix):
+            total_value_is_i = np.sum(confusion_matrix[i])
+            total_value_i_predict_as_i = confusion_matrix[i,i]
+            if total_value_is_i != 0:
+                recall_i = total_value_i_predict_as_i/total_value_is_i
+                total_recall += recall_i
+                total_label_have_recall += 1
+        recall = total_recall/total_label_have_recall
+
+        #calculate accuracy
+        total_right_answers = 0
+        for i in range(one_size_matrix):
+            total_right_answers += confusion_matrix[i,i]
+        total_answers = np.sum(confusion_matrix)
+        accuracy = total_right_answers/total_answers
+
+        #calculate f1
+        f1 = 2*(precision*recall)/(precision+recall)
+
+        return precision, recall, accuracy,f1
+
+
+
 
     
 
 def main():
-    global_value = GlobalValue(image_size=[120,120], batch_size = 512, shuffle_size = 1000, ratio_train = 0.8, ratio_test = 0.1, ratio_valid = 0.1, epochs = 40, small_epochs = 50,
+    global_value = GlobalValue(image_size=[110,110], batch_size = 512, shuffle_size = 1000, ratio_train = 0.8, ratio_test = 0.1, ratio_valid = 0.1, epochs = 40, small_epochs = 50,
                            image_each_class = 10)
     format_function = FormatFunction(global_value)
-    load_model = tf.keras.models.load_model(os.path.join(os.path.dirname(os.getcwd()),"save_model","align_image_origin14"), custom_objects={"Addons>TripletSemiHardLoss":tfa.losses.TripletSemiHardLoss})
-    classify = Classify(load_model,format_function)
-    embed_10_person = classify.embedding_all_data_by_directory(os.path.join(os.path.dirname(os.getcwd()),"10_person"))
-    print(len(embed_10_person))
+
+    #call model by weight because computer cannot open model directly
+    model_path = os.path.join(os.path.dirname(os.getcwd()),"models", "model49.h5")
+    input_size = [global_value.IMAGE_SIZE[0], global_value.IMAGE_SIZE[1], 3]
+    reload_model  = call_instance_FaceNet_with_last_isDense(input_size,10575)
+    reload_model.load_weights(model_path)
+    embedding_model = convert_train_model_to_embedding(reload_model)
+    print("Done init model")
+    classify = Classify(embedding_model,format_function)
+
+
+    matrix = np.array([[1,0,0],
+                        [0,5,0],
+                        [0,0,9]])
+    precision, recall, accuracy,f1 = classify.calculate_precision_recall_accuracy_f1_from_matrix(matrix)
+    print(precision, recall, accuracy,f1)
 if __name__ == "__main__":
     main()
