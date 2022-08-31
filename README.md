@@ -9,7 +9,9 @@ Or Get project file from other sources
 
 ## Step 2: Install
 Install Python: 
-```https://www.python.org```
+```
+https://www.python.org
+```
 Install Library for project:
 ```
 Install Cmake: https://cmake.org/download (requirement for dlib)
@@ -18,9 +20,9 @@ Change directory to dlib folder then type: "python setup.py install" if there is
 Change directory to this project then type: "pip install -r requirements.txt"
 ```
 ## Function 1: Clean and Wear mask
-Note: This function will read image and extract face from images then wear mask on the face images. Image folder must follow this structure: one main folder, there will be several sub-folder inside main folder, each sub-folder will storages image of the same person.
+Note: This function will read image and extract face from images then wear mask on the face images. 
+Image folder must follow this structure: one main folder, there will be several sub-folder inside main folder, each sub-folder will storages image of the same person.
 To run this function, in folder wear_mask, edit file FacialMaskDataset.py
-
 Run file FacialMaskDataset.py:
 ```
 python FacialMaskDatsetpy
@@ -35,4 +37,6 @@ This file is design to run on my personal GoogleColab so you must change some li
 We uploaded our trained model in models/model49.h5
 We also create a GUI application to give an example how to use this model.
 Your computer must have a camera.
-```python face_recognize.py```
+```
+python face_recognize.py
+```
