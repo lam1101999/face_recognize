@@ -337,9 +337,17 @@ class FacialMaskDataSet:
         print('done one thread')
 
     def cleanData(self, numberOfThread, dataSetRange = None):
+        # Init param
+        inputDir = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw")
+        outputDir = os.path.join(os.path.dirname(os.getcwd()), "dataset", "lfw_align")
+        isDetectMultipleFace = False
+        outputSize = None
+        margin = 38
+        imgShow = False
+        
         # Find total faces
         beginingOffSetFolder = 0
-        pathOfFaces = self.fileFunction.getSubDir(os.path.join(os.path.dirname(os.getcwd()),"images"))
+        pathOfFaces = self.fileFunction.getSubDir(inputDir)
         pathOfFaces.sort()
         if(dataSetRange is not None):
             beginingOffSetFolder = dataSetRange[0]
@@ -349,14 +357,6 @@ class FacialMaskDataSet:
         if facePerThread < 1:
             print("Thread is too large")
             return
-
-        # Init param
-        inputDir = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw")
-        outputDir = os.path.join(os.path.dirname(os.getcwd()), "dataset", "lfw_align")
-        isDetectMultipleFace = False
-        outputSize = None
-        margin = 38
-        imgShow = False
 
         # Work with process
         threads = []
@@ -380,20 +380,19 @@ class FacialMaskDataSet:
             return
     
     def wearMask(self, numberOfThread, dataSetRange = None):
-        # Find total faces
-        beginingOffSetFolder = 0
-        pathOfFaces = self.fileFunction.getSubDir(os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw"))
-        pathOfFaces.sort()
-        if(dataSetRange is not None):
-            beginingOffSetFolder = dataSetRange[0]
-            pathOfFaces = pathOfFaces[dataSetRange[0]: dataSetRange[1]]
-        totalFace = len(pathOfFaces)
-
         # Init param    
         inputDir = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw_align")
         outputDir = os.path.join(os.path.dirname(os.getcwd()), "dataset","lfw_mask")
         maskDir = os.path.join(os.path.dirname(os.getcwd()), "mask_image")
         maskAnnotationDir = os.path.join(os.path.dirname(os.getcwd()), "mask_annotation")
+        # Find total faces
+        beginingOffSetFolder = 0
+        pathOfFaces = self.fileFunction.getSubDir(inputDir)
+        pathOfFaces.sort()
+        if(dataSetRange is not None):
+            beginingOffSetFolder = dataSetRange[0]
+            pathOfFaces = pathOfFaces[dataSetRange[0]: dataSetRange[1]]
+        totalFace = len(pathOfFaces)
         # Work with process
         if (numberOfThread > 1):
             facePerThread = totalFace/numberOfThread
@@ -441,8 +440,8 @@ def main():
     # facialMaskDataSet.wearMask(1, dataSetRange)
 
 
-    path = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw_mask")
-    print(len(facialMaskDataSet.fileFunction.getPath(path)))
+    # path = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw_mask")
+    # print(len(facialMaskDataSet.fileFunction.getPath(path)))
 
     #----------------------End of Create face mask dataset part--------------------------------------------------
 
