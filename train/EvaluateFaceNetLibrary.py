@@ -124,7 +124,7 @@ class ClassifyForPytorch:
 
         return list_name
     
-    def evaluatev1(self, list_path, embedding, thresh_hold = 4):
+    def evaluate(self, list_path, embedding, thresh_hold = 4):
         unknow_answer = 0
         right_answer = 0
         mis_answer = 0

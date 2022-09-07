@@ -17,15 +17,34 @@ class Classify:
         self.format_function = format_function
     def init_model(self, model):
         self.model = model
+    def embedding_all_data_by_directory_no_normalization(self, all_data_directory, probability_train = None):
+        encoding_dictionary = dict()
+        path_to_each_folder = self.file_function.getSubDir(all_data_directory)
+        for each_folder in tqdm(path_to_each_folder, ascii=" *"):
+            label  = each_folder.split(os.path.sep)[-1]
+            path_each_file = self.file_function.getPath(each_folder)
+            if(probability_train is not None):
+                number_file = len(path_each_file)
+                min = np.maximum(int(probability_train*number_file), 1) 
+                path_each_file = path_each_file[:min]
+            if len(path_each_file) <= 0:
+                continue
+            dataset_of_one_person = tf.data.Dataset.from_tensor_slices(path_each_file)
+            dataset_of_one_person = dataset_of_one_person.map(self.format_function.get_label_as_string, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            dataset_of_one_person = dataset_of_one_person.map(self.format_function.process_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            dataset_of_one_person = dataset_of_one_person.batch(10)
+            embedding_one_person = self.embedding_data_one_label_no_normalization(dataset_of_one_person)
+            encoding_dictionary[label] = embedding_one_person
+        return encoding_dictionary
 
-    def embedding_data_one_label(self, dataset):
+    def embedding_data_one_label_no_normalization(self, dataset):
         encodes = self.model.predict(dataset)
         if encodes.any():
             encodes = np.average(encodes, axis=0 )
-            encodes = encodes/np.linalg.norm(encodes)
         return encodes
-    def embedding_data_one_labelV2(self, data):
-        encodes = self.model.predict(data)
+
+    def embedding_data_one_label(self, dataset):
+        encodes = self.model.predict(dataset)
         if encodes.any():
             encodes = np.average(encodes, axis=0 )
             encodes = encodes/np.linalg.norm(encodes)
@@ -47,29 +66,10 @@ class Classify:
         return encoding_dictionary        
 
     def embedding_all_data_by_directory(self, all_data_directory, probability_train = None):
+        total_image = len(self.file_function.getPath(all_data_directory))
         encoding_dictionary = dict()
         path_to_each_folder = self.file_function.getSubDir(all_data_directory)
-        for each_folder in tqdm(path_to_each_folder, ascii=" *"):
-            label  = each_folder.split(os.path.sep)[-1]
-            path_each_file = self.file_function.getPath(each_folder)
-            if(probability_train is not None):
-                number_file = len(path_each_file)
-                min = np.maximum(int(probability_train*number_file), 1) 
-                path_each_file = path_each_file[:min]
-            if len(path_each_file) <= 0:
-                continue
-            dataset_of_one_person = tf.data.Dataset.from_tensor_slices(path_each_file)
-            dataset_of_one_person = dataset_of_one_person.map(self.format_function.get_label_as_string, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-            dataset_of_one_person = dataset_of_one_person.map(self.format_function.process_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-            dataset_of_one_person = dataset_of_one_person.batch(10)
-            embedding_one_person = self.embedding_data_one_label(dataset_of_one_person)
-            encoding_dictionary[label] = embedding_one_person
-        return encoding_dictionary
-    
-    def embedding_all_data_by_directoryV2(self, all_data_directory, probability_train = None):
-        encoding_dictionary = dict()
-        path_to_each_folder = self.file_function.getSubDir(all_data_directory)
-
+        start = time.time()
         #work with image each person
         for each_folder in tqdm(path_to_each_folder, ascii=" *"):
             data = list()
@@ -93,8 +93,44 @@ class Classify:
 
             data = np.asarray(data)   
             # get embedding
-            embedding_one_person = self.embedding_data_one_labelV2(data)
+            embedding_one_person = self.embedding_data_one_label_no_normalization(data)
             encoding_dictionary[label] = embedding_one_person
+        end = time.time()
+        print("total time {} for {} images, average {}s per image".format(end - start, total_image, (end-start)/total_image))
+        return encoding_dictionary
+    
+    def embedding_all_data_by_directoryV2(self, all_data_directory, probability_train = None):
+        total_image = len(self.file_function.getPath(all_data_directory))
+        encoding_dictionary = dict()
+        path_to_each_folder = self.file_function.getSubDir(all_data_directory)
+        start = time.time()
+        #work with image each person
+        for each_folder in tqdm(path_to_each_folder, ascii=" *"):
+            data = list()
+            label  = each_folder.split(os.path.sep)[-1]
+            # get all path image of this person
+            path_each_files = self.file_function.getPath(each_folder)
+            if(probability_train is not None):
+                number_file = len(path_each_files)
+                min = np.maximum(int(probability_train*number_file), 1) 
+                path_each_files = path_each_files[:min]
+            if len(path_each_files) <= 0:
+                continue
+            
+            # Convert path image to image
+            for path_each_file in path_each_files:
+                try:
+                    image  = self.format_function.open_and_process_image_Pillow(path_each_file)
+                    data.append(image)
+                except Exception:
+                    continue
+
+            data = np.asarray(data)   
+            # get embedding
+            embedding_one_person = self.embedding_data_one_label(data)
+            encoding_dictionary[label] = embedding_one_person
+        end = time.time()
+        print("total time {} for {} images, average {}s per image".format(end - start, total_image, (end-start)/total_image))
         return encoding_dictionary
         
     def save_embedding_to_file(self, embedding, save_path):
@@ -110,8 +146,10 @@ class Classify:
         return encoding_dict
 
     def detect_one_image(self, image, embedding, thresh_hold = 4):
+        start = time.time()
         image = np.expand_dims(image,0)
         encode = self.model.predict(image)[0]
+        time_after_encoding = time.time()
         name = "unknown"
         distance = float("inf")
         for db_name, db_encode in embedding.items():
@@ -119,7 +157,8 @@ class Classify:
             if dist < thresh_hold and dist < distance:
                 name = db_name
                 distance = dist
-        return name
+        time_after_finding_label = time.time()
+        return name, time_after_encoding - start, time_after_finding_label - time_after_encoding
     def detect_on_dataset(self, dataset, embedding, thresh_hold = 4):
         list_name = list()
         encode = self.model.predict(dataset)
@@ -135,33 +174,37 @@ class Classify:
 
         return list_name
     
-    def evaluate(self, dataset, embedding, thresh_hold = 4):
+    def evaluate(self, list_path, embedding, thresh_hold = 4):
+
+        total_encoding_duration = 0
+        total_finding_duration = 0
         unknow_answer = 0
         right_answer = 0
         mis_answer = 0 
-        list_real_label = list()
-        for _, label_batch in tqdm(dataset, ascii=" *"):
-            for label in label_batch:
-                list_real_label.append(label)
-        total_answer = len(list_real_label)
-        list_predict_label = self.detect_on_dataset(dataset, embedding, thresh_hold)
+        total_answer = len(list_path)
 
-        for i in range(len(list_real_label)):
-            if (list_predict_label[i] == "unknown"):
+        for each_path in tqdm(list_path, ascii=" *"):
+            actual_label = each_path.split(os.path.sep)[-2]
+            image = self.format_function.open_and_process_image_Pillow(each_path)
+            predicted_label, encoding_duration, finding_duration = self.detect_one_image(image, embedding, thresh_hold)            
+            if (predicted_label == "unknown"):
                 unknow_answer +=1
-            elif (list_predict_label[i] == list_real_label[i]):
+            elif (predicted_label == actual_label):
                 right_answer +=1
             else:
                 mis_answer +=1
 
+            total_encoding_duration += encoding_duration
+            total_finding_duration += finding_duration
+        print("database have {} vector, evaluate {} image, average_time_encoding {}, average_time_finding {}".format(len(embedding),total_answer, total_encoding_duration/total_answer, total_finding_duration/total_answer))
         return right_answer, unknow_answer, mis_answer, total_answer
     
-    def evaluate_using_confusion_matrix(self,datset,embedding, thresh_hold = 4):
-        matrix = self.calculate_confusion_matrix(datset,embedding, thresh_hold)
+    def evaluate_using_confusion_matrix(self,list_path,embedding, thresh_hold = 4):
+        matrix = self.calculate_confusion_matrix(list_path,embedding, thresh_hold)
         precision, recall, accuracy,f1 = self.calculate_precision_recall_accuracy_f1_from_matrix(matrix)
         return precision, recall, accuracy,f1
     
-    def calculate_confusion_matrix(self, dataset, embedding, thresh_hold = 4):
+    def calculate_confusion_matrix(self, list_path, embedding, thresh_hold = 4):
 
         # Initialize Confusion Matrix (row is real label, column is predict label so precision is column, recall is row)
         total_label = len(embedding)
@@ -174,19 +217,13 @@ class Classify:
         for key in embedding.keys():
             off_set_dictionary[key] = off_set
             off_set+=1
-        # Get list real label
-        list_real_label = list()
-        for _, label_batch in tqdm(dataset, ascii=" *"):
-            for label in label_batch:
-                list_real_label.append(label)
-        # Get list predict label 
-        list_predict_label = self.detect_on_dataset(dataset, embedding, thresh_hold)
-
-        # Assign value to matrix
-        for i in range(len(list_real_label)):
-            real_label = list_real_label[i].numpy()
-            real_label = real_label.decode("ascii")
-            predict_label = list_predict_label[i]
+        print(len(list_path))
+        # predict label
+        for each_path in tqdm(list_path, ascii=" *"):
+            real_label = each_path.split(os.path.sep)[-2]
+            image = self.format_function.open_and_process_image_Pillow(each_path)
+            predict_label, _, _ = self.detect_one_image(image, embedding, thresh_hold)
+            # Assign value to matrix
             offset_row = off_set_dictionary[real_label]
             offset_column = off_set_dictionary[predict_label]
             matrix[offset_row, offset_column] = matrix[offset_row, offset_column]+1
@@ -237,24 +274,6 @@ class Classify:
     
 
 def main():
-    global_value = GlobalValue(image_size=[110,110], batch_size = 512, shuffle_size = 1000, ratio_train = 0.8, ratio_test = 0.1, ratio_valid = 0.1, epochs = 40, small_epochs = 50,
-                           image_each_class = 10)
-    format_function = FormatFunction(global_value)
-
-    #call model by weight because computer cannot open model directly
-    model_path = os.path.join(os.path.dirname(os.getcwd()),"models", "model49.h5")
-    input_size = [global_value.IMAGE_SIZE[0], global_value.IMAGE_SIZE[1], 3]
-    reload_model  = call_instance_FaceNet_with_last_isDense(input_size,10575)
-    reload_model.load_weights(model_path)
-    embedding_model = convert_train_model_to_embedding(reload_model)
-    print("Done init model")
-    classify = Classify(embedding_model,format_function)
-
-
-    matrix = np.array([[1,0,0],
-                        [0,5,0],
-                        [0,0,9]])
-    precision, recall, accuracy,f1 = classify.calculate_precision_recall_accuracy_f1_from_matrix(matrix)
-    print(precision, recall, accuracy,f1)
+    pass
 if __name__ == "__main__":
     main()
