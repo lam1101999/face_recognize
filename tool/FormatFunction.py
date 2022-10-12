@@ -14,14 +14,23 @@ class FormatFunction:
 
     def get_label_as_number(self,file_path):
         return file_path, tf.strings.to_number(tf.strings.split(file_path, os.path.sep)[-2])
-
-    def process_image(self,file_path, label):
+    
+    def process_image(self,file_path, label = None):
         image = tf.io.read_file(file_path)
         image = tf.image.decode_jpeg(image, channels = 3)
         image = tf.image.resize(image, self.global_value.IMAGE_SIZE)
         image = image/255
 
         return image,label
+    
+    def process_image_without_label(self,file_path):
+        image = tf.io.read_file(file_path)
+        image = tf.image.decode_jpeg(image, channels = 3)
+        image = tf.image.resize(image, self.global_value.IMAGE_SIZE)
+        image = image/255
+
+        return image
+            
     
     def process_imagev2(self, image, label = "null"):
         """_summary_ this function work like process_image function but the input is image, not path of image
@@ -51,7 +60,7 @@ class FormatFunction:
         return image,label
 
 
-    def get_dataset_partition(self, dataset, train_percentage, test_percentage, valid_percentage = 0, shuffle = True, shuffle_size = 100):
+    def get_dataset_partition(self, dataset, train_percentage, test_percentage, valid_percentage = 0, shuffle = False, shuffle_size = 100):
         dataset_size = len(dataset)
 
         if shuffle == True:
@@ -92,6 +101,20 @@ class FormatFunction:
         image = tf.image.stateless_random_jpeg_quality(image, 75, 95, seed)
 
         return image, label
+    
+    def augment_data_without_label(self, image):
+        seed = self.rng.make_seeds(2)[0]
+        
+        image = tf.image.stateless_random_brightness(image, max_delta=0.2, seed=seed)
+        image = tf.image.stateless_random_contrast(image, lower=0.2, upper=0.5, seed=seed)
+        image = tf.image.stateless_random_crop(image, size = [int(self.global_value.IMAGE_SIZE[0] * (80/100)),int(self.global_value.IMAGE_SIZE[1]*(80/100)), 3], seed=seed)
+        image = tf.image.resize(image, self.global_value.IMAGE_SIZE)
+        
+        image = tf.image.stateless_random_flip_left_right(image, seed = seed)
+        image = tf.image.stateless_random_flip_up_down(image, seed = seed)
+        image = tf.image.stateless_random_jpeg_quality(image, 75, 95, seed)
+
+        return image
     def get_label_dict(self,img_dir):
         label_dict = dict()
         count = 0

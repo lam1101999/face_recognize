@@ -7,6 +7,7 @@ import matplotlib as plt
 from tool.FileFunction import FileFunction
 import tensorflow
 from wear_mask import MTCNN
+from tqdm import tqdm
 
 
 
@@ -272,7 +273,7 @@ class FacialMaskDataSet:
                     print("working: all dataset")
                 
             # Handle image for each sub folder
-            for dir in dirs:
+            for dir in tqdm(dirs):
                 pathImages = self.fileFunction.getPath(dir)
                 if len(pathImages) <= 0:
                     print("No image in: ", dir)
@@ -286,7 +287,6 @@ class FacialMaskDataSet:
                     
                     #Detect mouth and wear mask
                     for pathImage in pathImages:
-                        print("work with new image")
                         img = cv2.imread(pathImage, cv2.IMREAD_UNCHANGED)
                         if img is None:
                             print("read failed {}".format(pathImage))
@@ -381,8 +381,8 @@ class FacialMaskDataSet:
     
     def wearMask(self, numberOfThread, dataSetRange = None):
         # Init param    
-        inputDir = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw_align")
-        outputDir = os.path.join(os.path.dirname(os.getcwd()), "dataset","lfw_mask")
+        inputDir = os.path.join(os.path.dirname(os.getcwd()),"dataset", "CASIA_align")
+        outputDir = os.path.join(os.path.dirname(os.getcwd()), "dataset","CASIA_mask")
         maskDir = os.path.join(os.path.dirname(os.getcwd()), "mask_image")
         maskAnnotationDir = os.path.join(os.path.dirname(os.getcwd()), "mask_annotation")
         # Find total faces
@@ -436,12 +436,23 @@ def main():
     # -------------- Create face mask dataset part-------------------------------------------
     # ----------------If dont want to create face mask dataset comment this block--------------
     
-    # dataSetRange = None
+    # dataSetRange = [10000,10576]
     # facialMaskDataSet.wearMask(1, dataSetRange)
 
 
-    # path = os.path.join(os.path.dirname(os.getcwd()),"dataset", "lfw_mask")
-    # print(len(facialMaskDataSet.fileFunction.getPath(path)))
+    # ---------------------Count number of file each class
+    # path = os.path.join(os.path.dirname(os.getcwd()),"dataset", "CASIA_align")
+    # dirs = [path.path for path in os.scandir(os.path.join(os.path.dirname(os.getcwd()),"dataset", "CASIA_align")) if path.is_dir()]
+    # list_file = []
+    # for dir in dirs:
+    #     list_file.append([path.path for path in os.scandir(dir).sort])
+    # count = [len(paths)  for paths in list_file]
+    
+    
+    # ------------------------Print number of image
+    path = os.path.join(os.path.dirname(os.getcwd()),"dataset", "CASIA_mask")
+    dir_path = facialMaskDataSet.fileFunction.getPath(path)
+    print(len(dir_path))
 
     #----------------------End of Create face mask dataset part--------------------------------------------------
 

@@ -4,13 +4,12 @@ import numpy as np
 import tkinter as tk
 from PIL import Image
 from PIL import ImageTk
-import threading
 import time
 from wear_mask.FaceDetector import FaceDetector
 from wear_mask.FaceMaskDetector import FaceMaskDetector
 import tensorflow as tf
-from train.Classify import Classify
-from train.FaceNet import call_instance_FaceNet_with_last_isDense, convert_train_model_to_embedding
+from train_tensorflow.Classify import Classify
+from train_tensorflow.FaceNet import call_instance_FaceNet_with_last_isDense, convert_train_model_to_embedding
 from tool.FormatFunction import FormatFunction
 from tool.FileFunction import FileFunction
 from tool.GlobalValue import GlobalValue
