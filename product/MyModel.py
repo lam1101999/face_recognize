@@ -14,7 +14,6 @@ class MyModel:
         model = None
         if name == "Facenet":
             path_to_weight = f"G:\My Drive\Colab Notebooks\FaceMaskRecognize\models\epoch49.h5"
-            print(path_to_weight)
             face_net_model = call_instance_FaceNet_with_last_isDense(
             input_shape=[110, 110, 3], number_of_class=10575, embedding=128)
             face_net_model.load_weights(path_to_weight)
@@ -77,6 +76,6 @@ class MyModel:
         return prediction
 
 def main():
-    my_model = MyModel("ArcFace")
+    my_model = MyModel("Facenet")
 if __name__ =="__main__":
     main()
