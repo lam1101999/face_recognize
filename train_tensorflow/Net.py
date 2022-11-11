@@ -12,7 +12,7 @@ def scaling(x, scale):
 	return x * scale
 
 
-def InceptionResNetV1(input_shape=[128, 128, 3]):
+def InceptionResNetV1(input_shape, embedding ):
 
 	inputs = Input(shape=input_shape)
 	x = Conv2D(32, 3, strides=2, padding='valid',
@@ -155,7 +155,7 @@ def InceptionResNetV1(input_shape=[128, 128, 3]):
 	x = GlobalAveragePooling2D(name='AvgPool')(x)
 	x = Dropout(0.2, name='Dropout')(x)
 	# Bottleneck
-	x = Dense(128, use_bias=False, name='Bottleneck')(x)
+	x = Dense(embedding, use_bias=False, name='Bottleneck')(x)
 	x = BatchNormalization(momentum=0.995, epsilon=0.001,
 	                       scale=False, name='Bottleneck_BatchNorm')(x)
 	# Create model

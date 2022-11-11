@@ -1,9 +1,10 @@
 
+from cmath import pi
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow_addons.losses import metric_learning
 from tensorflow.keras.layers import Input, BatchNormalization, Dropout, Flatten, Dense, Layer, Conv2D, LeakyReLU, Concatenate,\
-    Lambda, Add, add, MaxPooling2D,GlobalAveragePooling2D
+    Lambda, Add, add, MaxPooling2D, GlobalAveragePooling2D
 from typing import Union, Callable
 from train_tensorflow.Net import InceptionResNetV1
 from train_tensorflow.Net import ArcFace
@@ -14,23 +15,23 @@ import math
 
 
 class FaceNetModel(tf.keras.Model):
-    def __init__(self, number_of_class = None, arc_face=False):
+    def __init__(self, number_of_class=None, arc_face=False):
         super().__init__()
         self.number_of_class = number_of_class
         self.arc_face = arc_face
-        #Stem
+        # Stem
         self.stem = Stem()
-        
+
         # 5 A-Block
         self.a_block_1 = ABlock("A_BLOCK_1_")
         self.a_block_2 = ABlock("A_BLOCK_2_")
         self.a_block_3 = ABlock("A_BLOCK_3_")
         self.a_block_4 = ABlock("A_BLOCK_4_")
         self.a_block_5 = ABlock("A_BLOCK_5_")
-        
+
         # Reduction A Block
         self.reduction_a_block = ReductionABlock()
-        
+
         # 10 B-Block
         self.b_block_1 = BBlock("B_BLOCK_1_")
         self.b_block_2 = BBlock("B_BLOCK_2_")
@@ -42,44 +43,45 @@ class FaceNetModel(tf.keras.Model):
         self.b_block_8 = BBlock("B_BLOCK_8_")
         self.b_block_9 = BBlock("B_BLOCK_9_")
         self.b_block_10 = BBlock("B_BLOCK_10_")
-        
+
         # Reduction B-Block
         self.reduction_b_block = ReductionBBlock()
-        
+
         # 5 C-Block
         self.c_block_1 = CBlock("C_BLOCK_1_")
         self.c_block_2 = CBlock("C_BLOCK_2_")
         self.c_block_3 = CBlock("C_BLOCK_3_")
         self.c_block_4 = CBlock("C_BLOCK_4_")
         self.c_block_5 = CBlock("C_BLOCK_5_")
-        
+
         # Average block
         self.global_average = GlobalAveragePooling2D(name='AvgPool')
         self.dropout = Dropout(0.2, name='Dropout')
-        
+
         # Bottleneck
         self.bottle_neck = Dense(128, use_bias=False, name='Bottleneck')
         self.bottle_neck_normalization = BatchNormalization(momentum=0.995, epsilon=0.001,
-                            scale=False, name='Bottleneck_BatchNorm')
-        
+                                                            scale=False, name='Bottleneck_BatchNorm')
+
         # Classify
         if number_of_class:
             if arc_face:
                 self.classify = ArcFace(number_of_class, )
             else:
-                self.classify = Dense(number_of_class, use_bias=False, name='Bottleneck_train')
-    
-    def call(self, inputs, training = False):
-        
+                self.classify = Dense(
+                    number_of_class, use_bias=False, name='Bottleneck_train')
+
+    def call(self, inputs, training=False):
+
         x = self.stem(inputs)
-        
+
         x = self.a_block_1(x)
         x = self.a_block_2(x)
         x = self.a_block_3(x)
         x = self.a_block_4(x)
         x = self.a_block_5(x)
         x = self.reduction_a_block(x)
-        
+
         x = self.b_block_1(x)
         x = self.b_block_2(x)
         x = self.b_block_3(x)
@@ -91,13 +93,13 @@ class FaceNetModel(tf.keras.Model):
         x = self.b_block_9(x)
         x = self.b_block_10(x)
         x = self.reduction_b_block(x)
-        
+
         x = self.c_block_1(x)
         x = self.c_block_2(x)
         x = self.c_block_3(x)
         x = self.c_block_4(x)
         x = self.c_block_5(x)
-        
+
         x = self.global_average(x)
         x = self.dropout(x)
         x = self.bottle_neck(x)
@@ -108,22 +110,22 @@ class FaceNetModel(tf.keras.Model):
         if self.number_of_class and self.arc_face:
             x = self.classify((x, label))
         return x
-        
+
     def train_step(self, inputs):
         images, labels = inputs
         with tf.GradientTape() as tape:
             logits = self(images, training=True)
             loss = self.compiled_loss(labels, logits)
-        
+
         # Compute gradients
         gradients = tape.gradient(loss, self.trainable_weights)
-        
+
         # Update weights
         self.optimizer.apply_gradients(
             zip(gradients, self.trainable_weights)
         )
-        
-        #Update metrics 
+
+        # Update metrics
         self.compiled_metrics.update_state(labels, logits)
         return {m.name: m.result() for m in self.metrics}
 
@@ -292,28 +294,28 @@ class ReductionABlock(tf.keras.layers.Layer):
     def __init__(self, name=""):
         super().__init__()
         self.branch_0_conv_1 = Conv2D(384, 3, strides=2, padding='valid',
-                      use_bias=False, name=name + 'Mixed_6a_Branch_0_Conv2d_1a_3x3')
+                                      use_bias=False, name=name + 'Mixed_6a_Branch_0_Conv2d_1a_3x3')
         self.branch_0_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name + 'Mixed_6a_Branch_0_Conv2d_1a_3x3_BatchNorm')
+                                                   scale=False, name=name + 'Mixed_6a_Branch_0_Conv2d_1a_3x3_BatchNorm')
         self.branch_0_activation_1 = LeakyReLU(
             name=name + 'Mixed_6a_Branch_0_Conv2d_1a_3x3_Activation')
 
         self.branch_1_conv_1 = Conv2D(192, 1, strides=1, padding='same',
-                        use_bias=False, name=name + 'Mixed_6a_Branch_1_Conv2d_0a_1x1')
+                                      use_bias=False, name=name + 'Mixed_6a_Branch_1_Conv2d_0a_1x1')
         self.branch_1_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name + 'Mixed_6a_Branch_1_Conv2d_0a_1x1_BatchNorm')
+                                                   scale=False, name=name + 'Mixed_6a_Branch_1_Conv2d_0a_1x1_BatchNorm')
         self.branch_1_activation_1 = LeakyReLU(
             name=name + 'Mixed_6a_Branch_1_Conv2d_0a_1x1_Activation')
         self.branch_1_conv_2 = Conv2D(192, 3, strides=1, padding='same', use_bias=False,
-                        name=name + 'Mixed_6a_Branch_1_Conv2d_0b_3x3')
+                                      name=name + 'Mixed_6a_Branch_1_Conv2d_0b_3x3')
         self.branch_1_batch_2 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name + 'Mixed_6a_Branch_1_Conv2d_0b_3x3_BatchNorm')
+                                                   scale=False, name=name + 'Mixed_6a_Branch_1_Conv2d_0b_3x3_BatchNorm')
         self.branch_1_activation_2 = LeakyReLU(
             name=name + 'Mixed_6a_Branch_1_Conv2d_0b_3x3_Activation')
         self.branch_1_conv_3 = Conv2D(256, 3, strides=2, padding='valid', use_bias=False,
-                        name=name + 'Mixed_6a_Branch_1_Conv2d_1a_3x3')
+                                      name=name + 'Mixed_6a_Branch_1_Conv2d_1a_3x3')
         self.branch_1_batch_3 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name + 'Mixed_6a_Branch_1_Conv2d_1a_3x3_BatchNorm')
+                                                   scale=False, name=name + 'Mixed_6a_Branch_1_Conv2d_1a_3x3_BatchNorm')
         self.branch_1_activation_3 = LeakyReLU(
             name=name + 'Mixed_6a_Branch_1_Conv2d_1a_3x3_Activation')
         self.branch_pool = MaxPooling2D(
@@ -349,36 +351,36 @@ class BBlock(tf.keras.layers.Layer):
         super().__init__()
         self.layer_name = name
         self.branch_0_conv_1 = Conv2D(128, 1, strides=1, padding='same', use_bias=False,
-                          name=name+'Block17_Branch_0_Conv2d_1x1')
+                                      name=name+'Block17_Branch_0_Conv2d_1x1')
         self.branch_0_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                      scale=False, name=name+'Block17_Branch_0_Conv2d_1x1_BatchNorm')
+                                                   scale=False, name=name+'Block17_Branch_0_Conv2d_1x1_BatchNorm')
         self.branch_0_activation_1 = LeakyReLU(
             name=name+'Block17_Branch_0_Conv2d_1x1_Activation')
 
         self.branch_1_conv_1 = Conv2D(128, 1, strides=1, padding='same', use_bias=False,
-                          name=name+'Block17_Branch_1_Conv2d_0a_1x1')
+                                      name=name+'Block17_Branch_1_Conv2d_0a_1x1')
         self.branch_1_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001, scale=False,
-                                      name=name+'Block17_Branch_1_Conv2d_0a_1x1_BatchNorm')
+                                                   name=name+'Block17_Branch_1_Conv2d_0a_1x1_BatchNorm')
         self.branch_1_activation_1 = LeakyReLU(
             name=name+'Block17_Branch_1_Conv2d_0a_1x1_Activation')
 
         self.branch_1_conv_2 = Conv2D(128, [1, 7], strides=1, padding='same', use_bias=False,
-                          name=name+'Block17_Branch_1_Conv2d_0b_1x7')
+                                      name=name+'Block17_Branch_1_Conv2d_0b_1x7')
         self.branch_1_batch_2 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001, scale=False,
-                                      name=name+'Block17_Branch_1_Conv2d_0b_1x7_BatchNorm')
+                                                   name=name+'Block17_Branch_1_Conv2d_0b_1x7_BatchNorm')
         self.branch_1_activation_2 = LeakyReLU(
             name=name+'Block17_Branch_1_Conv2d_0b_1x7_Activation')
 
         self.branch_1_conv_3 = Conv2D(128, [7, 1], strides=1, padding='same', use_bias=False,
-                          name=name+'Block17_Branch_1_Conv2d_0c_7x1')
+                                      name=name+'Block17_Branch_1_Conv2d_0c_7x1')
         self.branch_1_batch_3 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001, scale=False,
-                                      name=name+'Block17_Branch_1_Conv2d_0c_7x1_BatchNorm')
+                                                   name=name+'Block17_Branch_1_Conv2d_0c_7x1_BatchNorm')
         self.branch_1_activation_3 = LeakyReLU(
             name=name+'Block17_Branch_1_Conv2d_0c_7x1_Activation')
 
         self.mixed = Concatenate(axis=3, name=name+'Block17_Concatenate')
         self.format_channel = Conv2D(896, 1, strides=1, padding='same', use_bias=True,
-                    name=name+'Block17_Conv2d_1x1')
+                                     name=name+'Block17_Conv2d_1x1')
 
         self.add = Add(name=name + "Addding")
         self.output_activation = LeakyReLU(name=name+'Block17_Activation')
@@ -411,57 +413,57 @@ class BBlock(tf.keras.layers.Layer):
 
 
 class ReductionBBlock(tf.keras.layers.Layer):
-    def __init__(self, name = ""):
+    def __init__(self, name=""):
         super().__init__()
         self.layer_name = name
         self.branch_0_conv_1 = Conv2D(256, 1, strides=1, padding='same',
-                      use_bias=False, name=name+'Mixed_7a_Branch_0_Conv2d_0a_1x1')
+                                      use_bias=False, name=name+'Mixed_7a_Branch_0_Conv2d_0a_1x1')
         self.branch_0_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_0_Conv2d_0a_1x1_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_0_Conv2d_0a_1x1_BatchNorm')
         self.branch_0_activation_1 = LeakyReLU(
             name=name+'Mixed_7a_Branch_0_Conv2d_0a_1x1_Activation')
         self.branch_0_conv_2 = Conv2D(384, 3, strides=2, padding='valid', use_bias=False,
-                        name=name+'Mixed_7a_Branch_0_Conv2d_1a_3x3')
+                                      name=name+'Mixed_7a_Branch_0_Conv2d_1a_3x3')
         self.branch_0_batch_2 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_0_Conv2d_1a_3x3_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_0_Conv2d_1a_3x3_BatchNorm')
         self.branch_0_activation_2 = LeakyReLU(
             name=name+'Mixed_7a_Branch_0_Conv2d_1a_3x3_Activation')
-        
+
         self.branch_1_conv_1 = Conv2D(256, 1, strides=1, padding='same',
-                        use_bias=False, name=name+'Mixed_7a_Branch_1_Conv2d_0a_1x1')
+                                      use_bias=False, name=name+'Mixed_7a_Branch_1_Conv2d_0a_1x1')
         self.branch_1_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_1_Conv2d_0a_1x1_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_1_Conv2d_0a_1x1_BatchNorm')
         self.branch_1_activation_1 = LeakyReLU(
             name=name+'Mixed_7a_Branch_1_Conv2d_0a_1x1_Activation')
         self.branch_1_conv_2 = Conv2D(256, 3, strides=2, padding='valid', use_bias=False,
-                        name=name+'Mixed_7a_Branch_1_Conv2d_1a_3x3')
+                                      name=name+'Mixed_7a_Branch_1_Conv2d_1a_3x3')
         self.branch_1_batch_2 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_1_Conv2d_1a_3x3_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_1_Conv2d_1a_3x3_BatchNorm')
         self.branch_1_activation_2 = LeakyReLU(
             name=name+'Mixed_7a_Branch_1_Conv2d_1a_3x3_Activation')
-        
+
         self.branch_2_conv_1 = Conv2D(256, 1, strides=1, padding='same',
-                        use_bias=False, name=name+'Mixed_7a_Branch_2_Conv2d_0a_1x1')
+                                      use_bias=False, name=name+'Mixed_7a_Branch_2_Conv2d_0a_1x1')
         self.branch_2_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_2_Conv2d_0a_1x1_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_2_Conv2d_0a_1x1_BatchNorm')
         self.branch_2_activation_1 = LeakyReLU(
             name=name+'Mixed_7a_Branch_2_Conv2d_0a_1x1_Activation')
         self.branch_2_conv_2 = Conv2D(256, 3, strides=1, padding='same', use_bias=False,
-                        name=name+'Mixed_7a_Branch_2_Conv2d_0b_3x3')
+                                      name=name+'Mixed_7a_Branch_2_Conv2d_0b_3x3')
         self.branch_2_batch_2 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_2_Conv2d_0b_3x3_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_2_Conv2d_0b_3x3_BatchNorm')
         self.branch_2_activation_2 = LeakyReLU(
             name=name+'Mixed_7a_Branch_2_Conv2d_0b_3x3_Activation')
         self.branch_2_conv_3 = Conv2D(256, 3, strides=2, padding='valid', use_bias=False,
-                        name=name+'Mixed_7a_Branch_2_Conv2d_1a_3x3')
+                                      name=name+'Mixed_7a_Branch_2_Conv2d_1a_3x3')
         self.branch_2_batch_3 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                    scale=False, name=name+'Mixed_7a_Branch_2_Conv2d_1a_3x3_BatchNorm')
+                                                   scale=False, name=name+'Mixed_7a_Branch_2_Conv2d_1a_3x3_BatchNorm')
         self.branch_2_activation_3 = LeakyReLU(
             name=name+'Mixed_7a_Branch_2_Conv2d_1a_3x3_Activation')
         self.branch_pool = MaxPooling2D(
             3, strides=2, padding='valid', name=name+'Mixed_7a_Branch_3_MaxPool_1a_3x3')
         self.mixed = Concatenate(axis=3, name=name+'Mixed_7a')
- 
+
     def call(self, inputs):
         branch_0 = self.branch_0_conv_1(inputs)
         branch_0 = self.branch_0_batch_1(branch_0)
@@ -469,14 +471,14 @@ class ReductionBBlock(tf.keras.layers.Layer):
         branch_0 = self.branch_0_conv_2(branch_0)
         branch_0 = self.branch_0_batch_2(branch_0)
         branch_0 = self.branch_0_activation_2(branch_0)
-        
+
         branch_1 = self.branch_1_conv_1(inputs)
         branch_1 = self.branch_1_batch_1(branch_1)
         branch_1 = self.branch_1_activation_1(branch_1)
         branch_1 = self.branch_1_conv_2(branch_1)
         branch_1 = self.branch_1_batch_2(branch_1)
         branch_1 = self.branch_1_activation_2(branch_1)
-        
+
         branch_2 = self.branch_2_conv_1(inputs)
         branch_2 = self.branch_2_batch_1(branch_2)
         branch_2 = self.branch_2_activation_1(branch_2)
@@ -486,55 +488,55 @@ class ReductionBBlock(tf.keras.layers.Layer):
         branch_2 = self.branch_2_conv_3(branch_2)
         branch_2 = self.branch_2_batch_3(branch_2)
         branch_2 = self.branch_2_activation_3(branch_2)
-        
+
         branch_pool = self.branch_pool(inputs)
         branches = [branch_0, branch_1, branch_2, branch_pool]
-        
+
         output = self.mixed(branches)
         return output
 
 
 class CBlock(tf.keras.layers.Layer):
-    def __init__(self, name = ""):
+    def __init__(self, name=""):
         super().__init__()
         self.layer_name = name
         self.branch_0_conv_1 = Conv2D(192, 1, strides=1, padding='same', use_bias=False,
-                          name=name+'Block8_1_Branch_0_Conv2d_1x1')
+                                      name=name+'Block8_1_Branch_0_Conv2d_1x1')
         self.branch_0_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001,
-                                      scale=False, name=name+'Block8_1_Branch_0_Conv2d_1x1_BatchNorm')
+                                                   scale=False, name=name+'Block8_1_Branch_0_Conv2d_1x1_BatchNorm')
         self.branch_0_activation_1 = LeakyReLU(
             name=name+'Block8_1_Branch_0_Conv2d_1x1_Activation')
-        
+
         self.branch_1_conv_1 = Conv2D(192, 1, strides=1, padding='same', use_bias=False,
-                          name=name+'Block8_1_Branch_1_Conv2d_0a_1x1')
+                                      name=name+'Block8_1_Branch_1_Conv2d_0a_1x1')
         self.branch_1_batch_1 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001, scale=False,
-                                      name=name+'Block8_1_Branch_1_Conv2d_0a_1x1_BatchNorm')
+                                                   name=name+'Block8_1_Branch_1_Conv2d_0a_1x1_BatchNorm')
         self.branch_1_activation_1 = LeakyReLU(
             name=name+'Block8_1_Branch_1_Conv2d_0a_1x1_Activation')
         self.branch_1_conv_2 = Conv2D(192, [1, 3], strides=1, padding='same', use_bias=False,
-                          name=name+'Block8_1_Branch_1_Conv2d_0b_1x3')
+                                      name=name+'Block8_1_Branch_1_Conv2d_0b_1x3')
         self.branch_1_batch_2 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001, scale=False,
-                                      name=name+'Block8_1_Branch_1_Conv2d_0b_1x3_BatchNorm')
+                                                   name=name+'Block8_1_Branch_1_Conv2d_0b_1x3_BatchNorm')
         self.branch_1_activation_2 = LeakyReLU(
             name=name+'Block8_1_Branch_1_Conv2d_0b_1x3_Activation')
         self.branch_1_conv_3 = Conv2D(192, [3, 1], strides=1, padding='same', use_bias=False,
-                          name=name+'Block8_1_Branch_1_Conv2d_0c_3x1')
+                                      name=name+'Block8_1_Branch_1_Conv2d_0c_3x1')
         self.branch_1_batch_3 = BatchNormalization(axis=3, momentum=0.995, epsilon=0.001, scale=False,
-                                      name=name+'Block8_1_Branch_1_Conv2d_0c_3x1_BatchNorm')
+                                                   name=name+'Block8_1_Branch_1_Conv2d_0c_3x1_BatchNorm')
         self.branch_1_activation_3 = LeakyReLU(
             name=name+'Block8_1_Branch_1_Conv2d_0c_3x1_Activation')
         self.mixed = Concatenate(axis=3, name=name+'Block8_1_Concatenate')
         self.format_channel = Conv2D(1792, 1, strides=1, padding='same', use_bias=True,
-                    name=name+'Block8_1_Conv2d_1x1')
+                                     name=name+'Block8_1_Conv2d_1x1')
 
         self.add = Add(name=name + "Addding")
         self.output_activation = LeakyReLU(name=name+'Block8_1_Activation')
-        
+
     def call(self, inputs):
         branch_0 = self.branch_0_conv_1(inputs)
         branch_0 = self.branch_0_batch_1(branch_0)
         branch_0 = self.branch_0_activation_1(branch_0)
-        
+
         branch_1 = self.branch_1_conv_1(inputs)
         branch_1 = self.branch_1_batch_1(branch_1)
         branch_1 = self.branch_1_activation_1(branch_1)
@@ -544,7 +546,7 @@ class CBlock(tf.keras.layers.Layer):
         branch_1 = self.branch_1_conv_3(branch_1)
         branch_1 = self.branch_1_batch_3(branch_1)
         branch_1 = self.branch_1_activation_3(branch_1)
-        
+
         branches = [branch_0, branch_1]
         mixed = self.mixed(branches)
         up = self.format_channel(mixed)
@@ -553,7 +555,8 @@ class CBlock(tf.keras.layers.Layer):
         output = self.add([inputs, up])
         output = self.output_activation(output)
         return output
-    
+
+
 def _resolve_training_flag(layer, training):
     if training is None:
         training = K.learning_phase()
@@ -564,18 +567,24 @@ def _resolve_training_flag(layer, training):
         training = False
     return training
 
+
 class LayerBeforeArcFace(tf.keras.layers.Layer):
-    def __init__(self, num_classes, name = ""):
-        super().__init__(name = name)
+    def __init__(self, num_classes, regularizer=regularizers.L2(1e-4), name=""):
+        super().__init__(name=name)
         self.num_classes = num_classes
-    
+        self.regularizer = regularizer
+
     def build(self, input_shape):
         embedding_shape = input_shape
         self._w = self.add_weight(shape=(embedding_shape[-1], self.num_classes),
-                                  initializer='glorot_uniform',
+                                  dtype = tf.float32,
+                                  initializer=tf.keras.initializers.HeNormal(),
+                                  regularizer=self.regularizer,
                                   trainable=True,
                                   name='cosine_weights')
-    
+        self.built = True
+        
+    @tf.function
     def call(self, inputs):
 
         embedding = inputs
@@ -583,42 +592,41 @@ class LayerBeforeArcFace(tf.keras.layers.Layer):
         x = tf.nn.l2_normalize(embedding, axis=1, name='normalize_prelogits')
         w = tf.nn.l2_normalize(self._w, axis=0, name='normalize_weights')
         cosine_sim = tf.matmul(x, w, name='cosine_similarity')
-        
+
         return cosine_sim
 
+
 class ArcFaceLoss(tf.keras.losses.Loss):
-    def __init__(self, num_classes,
-                s=30.0,
-                m=0.5,
-                regularizer=regularizers.l2(),
-                name='arcface',
-                **kwargs):
-        super().__init__(name = name)
-        self.num_classes = num_classes
-        self.s = float(s)
-        self.m = float(m)
-        self.regularizer = regularizer
-    
+    # Modify from "https://github.com/yinguobing/arcface/blob/main/losses.py"
+    def __init__(self,
+                 scale=30.0,
+                 margin=0.5,
+                 name='arcface',
+                 **kwargs):
+        super().__init__(name=name)
+        self.scale = float(scale)
+        self.margin = float(margin)
+
+    @tf.function
     def call(self, y_true, y_predict):
-        y_true = tf.cast(y_true, tf.float32)
-        logits = y_predict
+        # Convert y_true format array([ground truth number]) to format one-hot coding
+        y_true = tf.reshape(y_true, [-1])
+        depth = tf.shape(y_predict)[-1]
+        y_true_one_hot = tf.one_hot(y_true,depth)
+        # Prevent nan value
+        # Calculate arcos from cos
+        arc_cosine = tf.acos(K.clip(y_predict, -1 + K.epsilon(), 1 - K.epsilon()))
+        # Add constant factor m to the angle corresponding to the ground truth label
+        arc_cosine_with_margin = arc_cosine + y_true_one_hot*self.margin
+        #convert arc_cosine_margin to cosine
+        cosine_with_margin_scale = tf.cos(arc_cosine_with_margin)*self.scale
 
-        # add margin
-        # clip logits to prevent zero division when backward
-        theta = tf.acos(K.clip(logits, -1.0 + K.epsilon(), 1.0 - K.epsilon()))
-        target_logits = tf.cos(theta + self.m)
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(y_true, cosine_with_margin_scale)
+        losses = tf.math.reduce_mean(losses)
+        return losses
 
-        logits = logits * (1 - y_true) + target_logits * y_true
-        # feature re-scale
-        logits *= self.s
-        soft_max = tf.nn.softmax(logits)
-        
-        # Cross entropy
-        scce = tf.keras.losses.SparseCategoricalCrossentropy()
-        loss_value = scce(y_true, soft_max)
 
-        return loss_value
-    
+
 class ArcFace(tf.keras.layers.Layer):
     """
     Implementation of ArcFace layer. Reference: https://arxiv.org/abs/1801.07698
@@ -651,7 +659,6 @@ class ArcFace(tf.keras.layers.Layer):
                                   trainable=True,
                                   regularizer=self._regularizer,
                                   name='cosine_weights')
-        
 
     def call(self, inputs, training=None):
         """
@@ -678,7 +685,7 @@ class ArcFace(tf.keras.layers.Layer):
                                         depth=self._n_classes,
                                         name='one_hot_labels')
             theta = tf.math.acos(K.clip(
-                    cosine_sim, -1.0 + K.epsilon(), 1.0 - K.epsilon()))
+                cosine_sim, -1.0 + K.epsilon(), 1.0 - K.epsilon()))
             selected_labels = tf.where(tf.greater(theta, math.pi - self._m),
                                        tf.zeros_like(one_hot_labels),
                                        one_hot_labels,
@@ -690,8 +697,9 @@ class ArcFace(tf.keras.layers.Layer):
             output = tf.math.cos(final_theta, name='cosine_sim_with_margin')
             return self._s * output
 
-def call_instance_FaceNet_with_last_isDense(input_shape, number_of_class):
-    embedding_model = InceptionResNetV1(input_shape)
+
+def call_instance_FaceNet_with_last_isDense(input_shape, number_of_class, embedding):
+    embedding_model = InceptionResNetV1(input_shape, embedding)
     # The face-net model
     outputs = tf.keras.layers.Dense(
         number_of_class, use_bias=False, name='Bottleneck_train')(embedding_model.output)
@@ -700,19 +708,33 @@ def call_instance_FaceNet_with_last_isDense(input_shape, number_of_class):
     return face_net_model
 
 
-def call_instance_FaceNet_ArcFace(input_shape, number_of_class):
-    embedding_model = InceptionResNetV1(input_shape)
-    shape_logit = Input(shape=(number_of_class,))
-
-    # ArcFace
-    outputs = ArcFace(number_of_class, regularizer=regularizers.l2(
-        1e-4))(tf.stack(embedding_model.output, shape_logit))
-    face_net_arc_face_model = tf.keras.Model(
-        tf.stack(embedding_model.input, shape_logit), outputs, name="FaceNetArcFace")
-    return face_net_arc_face_model
-
 
 def convert_train_model_to_embedding(train_model):
+    """  convert train model to embedding with batch normalization
+
+    Args:
+        train_model (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    cut_the_last_layer = tf.keras.models.Model(
+        inputs=train_model.input, outputs=train_model.layers[-3].output)
+    outputs = tf.keras.layers.Lambda(
+        lambda x: tf.math.l2_normalize(x, axis=1))(cut_the_last_layer.output)
+    face_net_model = tf.keras.Model(
+        cut_the_last_layer.input, outputs, name="FaceNetModel")
+    return face_net_model
+
+def convert_train_model_to_embeddingv2(train_model):
+    """convert train model to embedding without batch normalization
+
+    Args:
+        train_model (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     cut_the_last_layer = tf.keras.models.Model(
         inputs=train_model.input, outputs=train_model.layers[-2].output)
     outputs = tf.keras.layers.Lambda(
@@ -720,31 +742,33 @@ def convert_train_model_to_embedding(train_model):
     face_net_model = tf.keras.Model(
         cut_the_last_layer.input, outputs, name="FaceNetModel")
     return face_net_model
+def convert_arcface_model_to_embedding(train_model):
+    bottle_neck = tf.keras.models.Model(
+        inputs=train_model.input, outputs=train_model.layers[-3].output)
+    face_net_model = tf.keras.Model(
+        bottle_neck.input, bottle_neck.output, name="FaceNetModel")
+    return face_net_model
+
+def convert_arcface_model_to_embeddingv2(train_model):
+    bottle_neck = tf.keras.models.Model(
+        inputs=train_model.input, outputs=train_model.layers[-2].output)
+    face_net_model = tf.keras.Model(
+        bottle_neck.input, bottle_neck.output, name="FaceNetModel")
+    return face_net_model
+
+
+def call_instance_FaceNet_with_last_ArcFace(input_shape, number_of_class, embedding):
+    embedding_model = InceptionResNetV1(input_shape, embedding)
+    # The face-net model
+    outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(embedding_model.output)
+    face_net_model = tf.keras.Model(
+        embedding_model.input, outputs, name="FaceNetModel")
+    return face_net_model
 
 
 if __name__ == "__main__":
     # tf.config.run_functions_eagerly(True)
-    input_shape = (128,128,3)
+    input_shape = (128, 128, 3)
     number_of_classes = 1000
-    
-    # Create model with dense
-    model = call_instance_FaceNet_with_last_isDense(input_shape,number_of_classes)
-    # Cut the last layer
-    model = tf.keras.models.Model(
-    inputs = model.input, outputs=model.layers[-2].output)
-    # Add layer before ArcFace
-    outputs = LayerBeforeArcFace(number_of_classes, name ="Layer_Before_ArcFace")(model.output)
-    # Recreate model
-    model = tf.keras.Model(model.inputs, outputs)
-    # Compile model
-    model.compile(
-    optimizer=tf.keras.optimizers.Adam(0.001),
-    loss = ArcFaceLoss(number_of_classes),
-    metrics=[tf.keras.metrics.SparseCategoricalAccuracy()]
-    )
-    # Summary model
+    model = call_instance_FaceNet_with_last_isDense(input_shape,10575,128)
     model.summary()
-    # y_true = [1, 2]
-    # y_pred = [[0.05, 0.95, 0], [0.1, 0.8, 0.1]]
-    # scce = tf.keras.losses.SparseCategoricalCrossentropy()
-    # print(scce(y_true,y_pred))

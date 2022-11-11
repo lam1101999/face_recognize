@@ -9,6 +9,7 @@ from wear_mask.FaceDetector import FaceDetector
 from wear_mask.FaceMaskDetector import FaceMaskDetector
 import tensorflow as tf
 from train_tensorflow.Classify import Classify
+from scipy.spatial.distance import cosine, euclidean
 from train_tensorflow.FaceNet import call_instance_FaceNet_with_last_isDense, convert_train_model_to_embedding
 from tool.FormatFunction import FormatFunction
 from tool.FileFunction import FileFunction
@@ -17,7 +18,8 @@ import pickle
 
 
 class MainApp():
-    def __init__(self, video_stream, output_path, model_path, embedding_path, face_detector = None, face_mask_detector = None) -> None:
+    def __init__(self, video_stream, output_path, model_path, embedding_path, face_detector = None, \
+        face_mask_detector = None, distance_formula = cosine) -> None:
         #Init variable
         self.is_recognize = True
         self.detect_method = 1 # 0: MTCNN, 1 SSD
@@ -25,6 +27,7 @@ class MainApp():
         self.global_value = GlobalValue(image_size=[110,110], batch_size = 512, shuffle_size = 1000, ratio_train = 0.8, ratio_test = 0.1, ratio_valid = 0.1, epochs = 40, small_epochs = 50,
                             image_each_class = 15)
         self.format_function = FormatFunction(self.global_value)
+        self.distance_formula = distance_formula
         
         # pass param to class
         self.video_stream = video_stream
@@ -93,7 +96,7 @@ class MainApp():
                         left,top,right,bottom = self.face_detector.get_coordinate_margin(bounding_box,self.margin, image.shape[1], image.shape[0])
                         face_to_recognize = image[top:bottom,left:right,:]
                         face_to_recognize,_ = self.format_function.process_imagev2(face_to_recognize)
-                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8)
+                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8, self.distance_formula)
                         image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
                         image = cv2.putText(image, label,(left,bottom), cv2.FONT_ITALIC, 1, (0,255,0), 1, cv2.LINE_AA)
             elif self.detect_method == 1:
@@ -106,7 +109,7 @@ class MainApp():
                         bottom = bounding_box[3]
                         face_to_recognize = image[top:bottom,left:right,:]
                         face_to_recognize,_ = self.format_function.process_imagev2(face_to_recognize)
-                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8)
+                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.4, self.distance_formula)
                         if is_mask[idx] == 0:#have mask
                             image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
                             image = cv2.putText(image, "mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (0,255,0), 2, cv2.LINE_AA)
@@ -159,7 +162,7 @@ class MainApp():
     def init_model(self, model_path):
         print("Init model")
         input_size = [self.global_value.IMAGE_SIZE[0], self.global_value.IMAGE_SIZE[1], 3]
-        reload_model  = call_instance_FaceNet_with_last_isDense(input_size,10575)
+        reload_model  = call_instance_FaceNet_with_last_isDense(input_size,12593, embedding = 512)
         reload_model.load_weights(model_path)
         embedding_model = convert_train_model_to_embedding(reload_model)
         self.classify = Classify(embedding_model, self.format_function)
@@ -181,7 +184,7 @@ def main():
     #Init value
     cap = cv2.VideoCapture(0)
     output_path = os.path.join(os.getcwd(),"data_base_image")
-    model_path = os.path.join(os.getcwd(),"models", "model49.h5")
+    model_path = os.path.join(os.getcwd(),"models", "110_64_ASIAN_epoch75.h5")
     data_base_path = os.path.join(os.getcwd(), "data_base_encoding","nothing.pkl")
     # data_base_path = os.path.join(os.getcwd(), "data_base_encoding","49_align_encode.pkl")
     face_detector = FaceDetector()

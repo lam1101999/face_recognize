@@ -194,7 +194,8 @@ class FileFunction:
 
 def main():
     fileFunction = FileFunction()
-    fileFunction.detect_and_remove_error_image(os.path.join(os.path.dirname(os.getcwd()),"face+mask_image"))
+    path = os.path.join(os.path.dirname(os.getcwd()), "dataset", "lfw_mask")
+    print(len(fileFunction.getPath(path)))
 
     
 
