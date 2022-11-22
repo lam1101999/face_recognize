@@ -19,6 +19,14 @@ class MyModel:
             face_net_model.load_weights(path_to_weight)
             face_net_model = convert_train_model_to_embedding(face_net_model)
             model = face_net_model
+        if name == "NewFacenet":
+            path_to_weight = f"G:\My Drive\Colab Notebooks\FaceMaskRecognize\save_model\\110-ASIAN\epoch54.h5"
+            print(path_to_weight)
+            face_net_model = call_instance_FaceNet_with_last_isDense(
+            input_shape=[110, 110, 3], number_of_class=12593, embedding=128)
+            face_net_model.load_weights(path_to_weight)
+            face_net_model = convert_train_model_to_embedding(face_net_model)
+            model = face_net_model
         if name == "ArcFace":
             path_to_weight = f"G:\My Drive\Colab Notebooks\FaceMaskRecognize\models\epoch101.h5"
             arc_face_model = call_instance_FaceNet_with_last_ArcFace(
@@ -76,6 +84,6 @@ class MyModel:
         return prediction
 
 def main():
-    my_model = MyModel("Facenet")
+    my_model = MyModel("NewFacenet")
 if __name__ =="__main__":
     main()
