@@ -37,7 +37,12 @@ Run file Train.ipynb
 This file is design to run on my personal GoogleColab so you must change some link and address for your account.
 
 ## Function 3: Face Recognize in real time
-We uploaded our trained model in models/model49.h5  
+We uploaded our trained model in models/epoch49.h5 (in this project I called it Facenet)
+Newer version is in models/epoch101.h5 this model is trained with ArcFace and have better performance ( in this project I called it ArcFace)
+To use these models I create a supported class in product/MyModel. The constructor receive string to init model ("Facenet", "NewFacenet", "ArcFace")
+This class support some function like convert image into vector,.... We dont need to preprocess image and rewrite code.
+Make sure to edit the address of model in this class.
+
 We also create a GUI application to give an example how to use this model.  
 Your computer must have a camera.  
 ```
