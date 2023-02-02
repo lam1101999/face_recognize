@@ -1,0 +1,24 @@
+#ignore folder
+References
+images/
+images
+align_image
+face+mask_image
+10_person
+checkpoint
+save_model
+encodings
+dataset
+src/
+data_base_image/**
+__pycache__
+.vscode
+.egg
+.egg-info
+.zip
+.rar
+build
+dist
+FaceMaskRecognize.egg-info
+models/20180408-102900
+cache/
