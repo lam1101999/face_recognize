@@ -28,7 +28,7 @@ To run this function, in folder wear_mask, edit file FacialMaskDataset.py
 ![](https://github.com/lam1101999/FaceMaskRecognize/blob/master/image_github/Input_and_output_wear_mask.jpg)
 Run file FacialMaskDataset.py:
 ```
-python FacialMaskDatsetpy
+python FacialMaskDatset.py
 ```
 
 ## Function 2: Train model

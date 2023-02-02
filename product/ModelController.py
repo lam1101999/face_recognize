@@ -5,21 +5,27 @@ import numpy as np
 import os
 from scipy.spatial.distance import euclidean, cosine
 import cv2
-class MyModel:
-    def __init__(self, name):
-        self.name = name
-        self.model = self._init_model(self.name)
+class ModelController:
+    def __init__(self, model_name = None, model = None):
+        self.model_name = model_name
+        if model_name is not None:
+            self.model = self._init_model(self.model_name)
+        elif model is not None:
+            self.model = model
+            
+    def get_model(self):
+        return self.model
     
-    def _init_model(self, name = "Facenet"):
+    def _init_model(self, model_name = "Facenet"):
         model = None
-        if name == "Facenet":
+        if model_name == "Facenet":
             path_to_weight = f"G:\My Drive\Colab Notebooks\FaceMaskRecognize\models\epoch49.h5"
             face_net_model = call_instance_FaceNet_with_last_isDense(
             input_shape=[110, 110, 3], number_of_class=10575, embedding=128)
             face_net_model.load_weights(path_to_weight)
             face_net_model = convert_train_model_to_embedding(face_net_model)
             model = face_net_model
-        if name == "NewFacenet":
+        if model_name == "NewFacenet":
             path_to_weight = f"G:\My Drive\Colab Notebooks\FaceMaskRecognize\save_model\\110-ASIAN\epoch54.h5"
             print(path_to_weight)
             face_net_model = call_instance_FaceNet_with_last_isDense(
@@ -27,7 +33,7 @@ class MyModel:
             face_net_model.load_weights(path_to_weight)
             face_net_model = convert_train_model_to_embedding(face_net_model)
             model = face_net_model
-        if name == "ArcFace":
+        if model_name == "ArcFace":
             path_to_weight = f"G:\My Drive\Colab Notebooks\FaceMaskRecognize\models\epoch101.h5"
             arc_face_model = call_instance_FaceNet_with_last_ArcFace(
             input_shape=[110, 110, 3], number_of_class = 12593, embedding=512)
@@ -35,16 +41,17 @@ class MyModel:
             arc_face_model = convert_arcface_model_to_embedding(arc_face_model)
             model = arc_face_model
         
-        if model == None:
+        if model == None :
             raise Exception("model is not support")
         else:
             return model
     
     def represent(self, image):
         size = 110
-        if self.name == "Facenet":
+        print(image.shape)
+        if self.model_name == "Facenet":
             size = 110
-        if self.name == "ArcFace":
+        if self.model_name == "ArcFace":
             size = 110
         image = cv2.resize(image,[size,size])
         vector_image = self.model(np.expand_dims(image, 0))[0]
@@ -84,6 +91,6 @@ class MyModel:
         return prediction
 
 def main():
-    my_model = MyModel("NewFacenet")
+    model_controller = ModelController("NewFacenet")
 if __name__ =="__main__":
     main()

@@ -14,12 +14,14 @@ from train_tensorflow.FaceNet import call_instance_FaceNet_with_last_isDense, co
 from tool.FormatFunction import FormatFunction
 from tool.FileFunction import FileFunction
 from tool.GlobalValue import GlobalValue
+from product.ModelController import ModelController
 import pickle
 
 
 class MainApp():
-    def __init__(self, video_stream, output_path, model_path, embedding_path, face_detector = None, \
+    def __init__(self, video_stream, output_path, model_controller, embedding_path, face_detector = None, \
         face_mask_detector = None, distance_formula = cosine) -> None:
+        
         #Init variable
         self.is_recognize = True
         self.detect_method = 1 # 0: MTCNN, 1 SSD
@@ -28,19 +30,21 @@ class MainApp():
                             image_each_class = 15)
         self.format_function = FormatFunction(self.global_value)
         self.distance_formula = distance_formula
+        self.threshold = 0.4
         
         # pass param to class
         self.video_stream = video_stream
         self.output_path = output_path
-        self.model_path = model_path
         self.embedding_path = embedding_path
         self.face_detector = face_detector
         self.face_mask_detector = face_mask_detector
+        self.model_controller = model_controller
 
 
         #Init model
         self.classify = None
-        self.init_model(self.model_path)
+        self.init_model()
+
 
         #Init embedding
         self.embedding = self.classify.load_embedding_from_file(self.embedding_path)
@@ -55,9 +59,6 @@ class MainApp():
         self.train_button =None
         self.name_text = None
         self.init_main_window()
-
-
-
 
     
     def init_main_window(self):
@@ -96,7 +97,7 @@ class MainApp():
                         left,top,right,bottom = self.face_detector.get_coordinate_margin(bounding_box,self.margin, image.shape[1], image.shape[0])
                         face_to_recognize = image[top:bottom,left:right,:]
                         face_to_recognize,_ = self.format_function.process_imagev2(face_to_recognize)
-                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.8, self.distance_formula)
+                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, self.threshold, self.distance_formula)
                         image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
                         image = cv2.putText(image, label,(left,bottom), cv2.FONT_ITALIC, 1, (0,255,0), 1, cv2.LINE_AA)
             elif self.detect_method == 1:
@@ -109,7 +110,7 @@ class MainApp():
                         bottom = bounding_box[3]
                         face_to_recognize = image[top:bottom,left:right,:]
                         face_to_recognize,_ = self.format_function.process_imagev2(face_to_recognize)
-                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, 0.4, self.distance_formula)
+                        label = self.classify.detect_one_image(face_to_recognize, self.embedding, self.threshold, self.distance_formula)
                         if is_mask[idx] == 0:#have mask
                             image = cv2.rectangle(image,(left,top), (right,bottom), (0,255,0), 3)
                             image = cv2.putText(image, "mask "+label,(left+10,bottom+30), cv2.FONT_ITALIC, 1, (0,255,0), 2, cv2.LINE_AA)
@@ -159,13 +160,14 @@ class MainApp():
         self.window.mainloop()
     
 
-    def init_model(self, model_path):
+    def init_model(self):
         print("Init model")
-        input_size = [self.global_value.IMAGE_SIZE[0], self.global_value.IMAGE_SIZE[1], 3]
-        reload_model  = call_instance_FaceNet_with_last_isDense(input_size,12593, embedding = 512)
-        reload_model.load_weights(model_path)
-        embedding_model = convert_train_model_to_embedding(reload_model)
-        self.classify = Classify(embedding_model, self.format_function)
+        # input_size = [self.global_value.IMAGE_SIZE[0], self.global_value.IMAGE_SIZE[1], 3]
+        # reload_model  = call_instance_FaceNet_with_last_isDense(input_size,12593, embedding = 512)
+        # reload_model.load_weights(model_path)
+        # embedding_model = convert_train_model_to_embedding(reload_model)
+        # embedding_model = self.model_controller.get_model()
+        self.classify = Classify(self.model_controller, self.format_function)
         print("Done init model")
         
     
@@ -186,12 +188,12 @@ def main():
     output_path = os.path.join(os.getcwd(),"data_base_image")
     model_path = os.path.join(os.getcwd(),"models", "110_64_ASIAN_epoch75.h5")
     data_base_path = os.path.join(os.getcwd(), "data_base_encoding","nothing.pkl")
-    # data_base_path = os.path.join(os.getcwd(), "data_base_encoding","49_align_encode.pkl")
     face_detector = FaceDetector()
     face_mask_detector = FaceMaskDetector(os.path.join(os.getcwd(), "models","face_mask_detection.pb"))
+    model_controller = ModelController("ArcFace")
 
 
-    app = MainApp(cap, output_path, model_path, data_base_path, face_detector, face_mask_detector)
+    app = MainApp(cap, output_path, model_controller, data_base_path, face_detector, face_mask_detector)
     app.video_loop()
     app.show()
 

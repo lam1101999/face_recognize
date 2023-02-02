@@ -305,6 +305,7 @@ def _resolve_training(layer, training):
 class ArcFace(Layer):
     """
     Implementation of ArcFace layer. Reference: https://arxiv.org/abs/1801.07698
+    https://www.kaggle.com/code/chankhavu/keras-layers-arcface-cosface-adacos
 
     Arguments:
       num_classes: number of classes to classify

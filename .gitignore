@@ -15,7 +15,10 @@ __pycache__
 .vscode
 .egg
 .egg-info
+.zip
+.rar
 build
 dist
 FaceMaskRecognize.egg-info
 models/20180408-102900
+cache/

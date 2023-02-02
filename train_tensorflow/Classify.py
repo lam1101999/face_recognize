@@ -13,13 +13,13 @@ from train_tensorflow.FaceNet import call_instance_FaceNet_with_last_isDense, co
 
 
 class Classify:
-    def __init__(self, model, format_function):
-        self.model = model
+    def __init__(self, model_controller, format_function):
+        self.model_controller = model_controller
         self.file_function = FileFunction()
         self.format_function = format_function
 
-    def init_model(self, model):
-        self.model = model
+    def init_model_controller(self, model_controller):
+        self.model_controller = model_controller
 
     def embedding_all_data_by_directory(self, all_data_directory, probability_train=None, is_normalized=False) -> dict:
         """ Receive directory of all class then produce embedding of each class as a vector,
@@ -65,7 +65,7 @@ class Classify:
         Returns:
             _type_: _description_
         """
-        encodes = self.model.predict(dataset)
+        encodes = self.model_controller.get_model().predict(dataset)
         if encodes.any():
             encodes = np.average(encodes, axis=0)
             if is_normalized:
@@ -147,7 +147,7 @@ class Classify:
     def detect_one_image(self, image, embedding, thresh_hold=4, distance_formula=cosine):
         start = time.time()
         image = np.expand_dims(image, 0)
-        encode = self.model.predict(image)[0]
+        encode = self.model_controller.get_model().predict(image)[0]
         name = "unknown"
         distance = float("inf")
         for db_name, db_encode in embedding.items():
@@ -159,7 +159,7 @@ class Classify:
 
     def detect_on_dataset(self, dataset, embedding, thresh_hold=4, distance_formula=cosine):
         list_name = list()
-        encode = self.model.predict(dataset)
+        encode = self.model_controller.get_model().predict(dataset)
         for each_encode in tqdm(encode, ascii=" *"):
             name = "unknown"
             distance = float("inf")
@@ -281,7 +281,7 @@ class Classify:
             data = np.asarray(image)
             shape = (1, image.shape[0], image.shape[1], image.shape[2])
             data_in_array = np.reshape(data, shape)
-            encodes = self.model.predict(data_in_array)
+            encodes = self.model_controller.get_model().predict(data_in_array)
         end = time.time()
         print(f"time to embedding one image {(end - now)/len(image_paths)}")
 
