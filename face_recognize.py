@@ -30,7 +30,7 @@ class MainApp():
                             image_each_class = 15)
         self.format_function = FormatFunction(self.global_value)
         self.distance_formula = distance_formula
-        self.threshold = 0.4
+        self.threshold = 0.6
         
         # pass param to class
         self.video_stream = video_stream

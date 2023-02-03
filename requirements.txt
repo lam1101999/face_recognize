@@ -14,3 +14,4 @@ tqdm==4.64.0
 opencv-python==4.6.0.66
 scikit-learn
 scipy
+tensorflow_datasets

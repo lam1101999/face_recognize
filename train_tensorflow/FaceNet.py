@@ -761,10 +761,33 @@ def call_instance_FaceNet_with_last_ArcFace(input_shape, number_of_class, embedd
     embedding_model = InceptionResNetV1(input_shape, embedding)
     # The face-net model
     outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(embedding_model.output)
-    face_net_model = tf.keras.Model(
+    model = tf.keras.Model(
         embedding_model.input, outputs, name="FaceNetModel")
-    return face_net_model
+    return model
 
+def call_instance_model(input_shape, number_of_class, embedding, model_name = "Inception-Resnet-V1",\
+                        last_layer = "Dense"):
+    
+    # Create model structure
+    embedding_model = None
+    if model_name == "Inception-Resnet-V1":
+        embedding_model = InceptionResNetV1(input_shape, embedding)
+    elif model_name == "Inception-Resnet-V2":
+        embedding_model = tf.keras.applications.InceptionResNetV2(include_top=True, weights=None,\
+                        input_shape=input_shape, classes = embedding)
+        
+    # Create last layer
+    outputs = None
+    if last_layer == "Dense":
+        outputs = tf.keras.layers.Dense(
+        number_of_class, use_bias=False, name='Bottleneck_train')(embedding_model.output)
+    elif last_layer == "ArcFace":
+        outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(embedding_model.output)
+    
+    # Create model from input and output
+    model = tf.keras.Model(
+        embedding_model.input, outputs, name=model_name)
+    return model
 
 if __name__ == "__main__":
     # tf.config.run_functions_eagerly(True)
