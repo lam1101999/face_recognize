@@ -10,7 +10,6 @@ from train_tensorflow.Net import InceptionResNetV1
 from train_tensorflow.Net import ArcFace
 from tensorflow.keras import regularizers
 from tensorflow.keras import backend as K
-from keras.utils.layer_utils import count_params
 import math
 
 

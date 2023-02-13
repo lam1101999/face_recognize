@@ -21,4 +21,3 @@ build
 dist
 FaceMaskRecognize.egg-info
 models/20180408-102900
-cache/
