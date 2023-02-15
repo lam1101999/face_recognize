@@ -6,8 +6,8 @@ from tensorflow_addons.losses import metric_learning
 from tensorflow.keras.layers import Input, BatchNormalization, Dropout, Flatten, Dense, Layer, Conv2D, LeakyReLU, Concatenate,\
     Lambda, Add, add, MaxPooling2D, GlobalAveragePooling2D
 from typing import Union, Callable
-from Net import InceptionResNetV1
-from Net import ArcFace
+from .Net import InceptionResNetV1
+from .Net import ArcFace
 from tensorflow.keras import regularizers
 from tensorflow.keras import backend as K
 import math
