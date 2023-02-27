@@ -6,8 +6,8 @@ from tensorflow_addons.losses import metric_learning
 from tensorflow.keras.layers import Input, BatchNormalization, Dropout, Flatten, Dense, Layer, Conv2D, LeakyReLU, Concatenate,\
     Lambda, Add, add, MaxPooling2D, GlobalAveragePooling2D
 from typing import Union, Callable
-from .Net import InceptionResNetV1
-from .Net import ArcFace
+from .inceptionresnetv1 import InceptionResNetV1
+from .inceptionresnetv1 import ArcFace
 from tensorflow.keras import regularizers
 from tensorflow.keras import backend as K
 import math
@@ -70,25 +70,22 @@ class ArcFaceLoss(tf.keras.losses.Loss):
         losses = tf.math.reduce_mean(losses)
         return losses
 
-
 def convert_model_to_embedding(train_model, cut_position = -2, add_normalization=False):
-    cut_layer = tf.keras.models.Model(
-        inputs=train_model.input, outputs=train_model.layers[cut_position].output)
+    outputs = train_model.layers[cut_position].output
     if add_normalization:
         outputs = tf.keras.layers.Lambda(
-            lambda x: tf.math.l2_normalize(x, axis=1))(cut_the_last_layer.output)
-    else:
-        outputs = cut_layer.output
-    embedding = tf.keras.Model(
-        cut_layer.input, outputs, name="embedding")
+            lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
+    embedding = tf.keras.models.Model(
+        train_model.input, outputs, name="embedding")
     return embedding
+
 def convert_dense_layer_to_arcface(path_weights, input_shape, number_of_class, embedding, model_name = "InceptionResNetV1"):
     model = call_instance_model(input_shape, number_of_class, embedding, model_name, "Dense")
     model.load_weights(path_weights)
     cut_the_last_layer = tf.keras.models.Model(
         inputs=model.input, outputs=model.layers[-2].output)
     outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(cut_the_last_layer.output)
-    arcface_model = tf.keras.Model(model.input, outputs, model_name)
+    arcface_model = tf.keras.models.Model(model.input, outputs, model_name)
     return arcface_model
 
 def call_instance_model(input_shape, number_of_class, embedding, model_name = "InceptionResNetV1",\
@@ -98,6 +95,8 @@ def call_instance_model(input_shape, number_of_class, embedding, model_name = "I
     embedding_model = None
     if model_name == "InceptionResNetV1":
         embedding_model = InceptionResNetV1(input_shape, embedding)
+    if model_name == "InceptionResNetV1Hard":
+        embedding_model = InceptionResNetV1(input_shape, embedding, easy_version = False)
     elif model_name == "InceptionResNetV2":
         embedding_model = tf.keras.applications.InceptionResNetV2(include_top=True, weights=None,\
                         input_shape=input_shape, classes = embedding, classifier_activation=None)
@@ -114,7 +113,7 @@ def call_instance_model(input_shape, number_of_class, embedding, model_name = "I
         outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(embedding_model.output)
     
     # Create model from input and output
-    model = tf.keras.Model(
+    model = tf.keras.models.Model(
         embedding_model.input, outputs, name=model_name)
     return model
 

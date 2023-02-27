@@ -7,7 +7,9 @@ from tool.GlobalValue import GlobalValue
 import tensorflow_addons as tfa
 import pickle
 from scipy.spatial.distance import cosine, euclidean
+from functools import partial
 from tqdm import tqdm
+tqdm = partial(tqdm, position=0, leave=True)
 import time
 from train_tensorflow.FaceNet import call_instance_model, convert_model_to_embedding
 
@@ -21,7 +23,8 @@ class Classify:
     def init_model_controller(self, model_controller):
         self.model_controller = model_controller
 
-    def embedding_all_data_by_directory(self, all_data_directory, probability_train=None, is_normalized=False) -> dict:
+    def embedding_all_data_by_directory(self, all_data_directory, probability_train=None,
+                                        is_normalized=False) -> dict:
         """ Receive directory of all class then produce embedding of each class as a vector,
             using tf.dataset to processing image
 
@@ -34,13 +37,13 @@ class Classify:
         """
         encoding_dictionary = dict()
         path_to_each_folder = self.file_function.getSubDir(all_data_directory)
-        for each_folder in tqdm(path_to_each_folder, ascii=" *"):
+        for each_folder in tqdm(path_to_each_folder):
             label = each_folder.split(os.path.sep)[-1]
             path_each_file = self.file_function.getPath(each_folder)
             if (probability_train is not None):
                 number_file = len(path_each_file)
-                min = np.maximum(int(probability_train*number_file), 1)
-                path_each_file = path_each_file[:min]
+                min_number = np.maximum(int(probability_train*number_file), 1)
+                path_each_file = path_each_file[:min_number]
             if len(path_each_file) <= 0:
                 continue
             dataset_of_one_person = tf.data.Dataset.from_tensor_slices(
@@ -105,7 +108,7 @@ class Classify:
         encoding_dictionary = dict()
         path_to_each_folder = self.file_function.getSubDir(all_data_directory)
         # work with image each person
-        for each_folder in tqdm(path_to_each_folder, ascii=" *"):
+        for each_folder in tqdm(path_to_each_folder):
             data = list()
             label = each_folder.split(os.path.sep)[-1]
             # get all path image of this person
@@ -133,6 +136,9 @@ class Classify:
         return encoding_dictionary
 
     def save_embedding_to_file(self, embedding, save_path):
+        dirs_name = os.path.dirname(save_path)
+        if not os.path.exists(dirs_name):
+            os.makedirs(dirs_name)
         with open(save_path, 'wb') as file:
             pickle.dump(embedding, file)
 
@@ -145,7 +151,6 @@ class Classify:
         return encoding_dict
 
     def detect_one_image(self, image, embedding, thresh_hold=4, distance_formula=cosine):
-        start = time.time()
         image = np.expand_dims(image, 0)
         encode = self.model_controller.get_model().predict(image)[0]
         name = "unknown"
@@ -160,7 +165,7 @@ class Classify:
     def detect_on_dataset(self, dataset, embedding, thresh_hold=4, distance_formula=cosine):
         list_name = list()
         encode = self.model_controller.get_model().predict(dataset)
-        for each_encode in tqdm(encode, ascii=" *"):
+        for each_encode in tqdm(encode):
             name = "unknown"
             distance = float("inf")
             for db_name, db_encode in embedding.items():
@@ -181,7 +186,7 @@ class Classify:
         mis_answer = 0
         total_answer = len(list_path)
 
-        for each_path in tqdm(list_path, ascii=" *"):
+        for each_path in tqdm(list_path):
             actual_label = each_path.split(os.path.sep)[-2]
             image = self.format_function.open_and_process_image_Pillow(
                 each_path)
@@ -206,6 +211,14 @@ class Classify:
         precision, recall, accuracy, f1 = self.calculate_precision_recall_accuracy_f1_from_matrix(
             matrix)
         return precision, recall, accuracy, f1
+    
+    def predict_list_path(self, list_path, embedding, thresh_hold = 4, distance_formula = cosine):
+        predictions = []
+        for each_path in tqdm(list_path):
+            image = self.format_function.open_and_process_image_Pillow(each_path)
+            predict_label = self.detect_one_image(image,embedding,thresh_hold, distance_formula)
+            predictions.append(predict_label)
+        return predictions
 
     def calculate_confusion_matrix(self, list_path, embedding, thresh_hold=4, distance_formula=cosine):
         # Initialize Confusion Matrix (row is real label, column is predict label so precision is column, recall is row)
@@ -220,7 +233,7 @@ class Classify:
             off_set += 1
         print(len(list_path))
         # predict label
-        for each_path in tqdm(list_path, ascii=" *"):
+        for each_path in tqdm(list_path):
             real_label = each_path.split(os.path.sep)[-2]
             image = self.format_function.open_and_process_image_Pillow(
                 each_path)
@@ -274,7 +287,7 @@ class Classify:
 
     def measure_time_to_extract_embedding(self, directory_path):
         image_paths = self.file_function.getPath(directory_path)
-        now  = time.time()
+        now = time.time()
         for image_path in image_paths:
             image = self.format_function.open_and_process_image_Pillow(
                 image_path)
@@ -288,7 +301,7 @@ class Classify:
 
 def main():
     global_value = GlobalValue(image_size=[110, 110], batch_size=512, shuffle_size=1000, ratio_train=0.8, ratio_test=0.1,
-        ratio_valid=0.1, epochs=40, small_epochs=50, image_each_class=15)
+                               ratio_valid=0.1, epochs=40, small_epochs=50, image_each_class=15)
     format_function = FormatFunction(global_value)
     model_path = os.path.join(
         os.path.dirname(os.getcwd()), "save_model", "110-ASIAN", "epoch54.h5")
@@ -298,7 +311,8 @@ def main():
     reload_model.load_weights(model_path)
     embedding_model = convert_model_to_embedding(reload_model)
     classify = Classify(embedding_model, format_function)
-    classify.measure_time_to_extract_embedding(os.path.join(os.path.dirname(os.getcwd()),"dataset","10_person"))
+    classify.measure_time_to_extract_embedding(os.path.join(
+        os.path.dirname(os.getcwd()), "dataset", "10_person"))
 
 
 if __name__ == "__main__":

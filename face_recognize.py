@@ -10,7 +10,7 @@ from wear_mask.FaceMaskDetector import FaceMaskDetector
 import tensorflow as tf
 from train_tensorflow.Classify import Classify
 from scipy.spatial.distance import cosine, euclidean
-from train_tensorflow.FaceNet import call_instance_FaceNet_with_last_isDense, convert_train_model_to_embedding
+from train_tensorflow.FaceNet import call_instance_model, convert_model_to_embedding
 from tool.FormatFunction import FormatFunction
 from tool.FileFunction import FileFunction
 from tool.GlobalValue import GlobalValue
@@ -163,7 +163,7 @@ class MainApp():
     def init_model(self):
         print("Init model")
         # input_size = [self.global_value.IMAGE_SIZE[0], self.global_value.IMAGE_SIZE[1], 3]
-        # reload_model  = call_instance_FaceNet_with_last_isDense(input_size,12593, embedding = 512)
+        # reload_model  = call_instance_model(input_size,12593, embedding = 512)
         # reload_model.load_weights(model_path)
         # embedding_model = convert_train_model_to_embedding(reload_model)
         # embedding_model = self.model_controller.get_model()
