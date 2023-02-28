@@ -49,52 +49,50 @@ def evaluate_lfw(model_controller, distance_type = "euclidean"):
 
 def evaluate_mask_lfw():
     #Init
-    model_name = "InceptionResNetV1Hard"
+    model_name = "InceptionResNetV2"
     last_layer = "ArcFace"
-    MODEL_NAME = f"110-64-{model_name}-{last_layer}"
+    MODEL_NAME = f"160-64-{model_name}-{last_layer}"
     global_value = GlobalValue(image_size=[160,160], batch_size = 64, shuffle_size = 512, ratio_train = 0.8, epochs = 40, small_epochs = 2)
     format_function = FormatFunction(global_value)
     file_function = FileFunction()
 
-    for i in range(101,102):
+    for i in range(40,41):
         print("evaluate epoch: ", i)
         path_model = os.path.join(os.getcwd(),"save_model",
-                                  MODEL_NAME,"epoch{}.h5".format(i))
+                                  MODEL_NAME,f"epoch{i}.h5")
         print(path_model)
         model = call_instance_model((global_value.IMAGE_SIZE[0], global_value.IMAGE_SIZE[1],3), 12593, 512, model_name, last_layer)
         model.load_weights(path_model)
         model = convert_model_to_embedding(model, add_normalization = True)
-        model.summary()
-        # model_controller = ModelController(model = model)
-        # classify = Classify(model_controller, format_function)
+        model_controller = ModelController(model = model)
+        classify = Classify(model_controller, format_function)
 
-        # #Get embedding database, get no-mask face image then convert to vector
-        # print("embedding")
-        # encoding_path = os.path.join(os.getcwd(), "cache", "encodings", model_name, "epoch{}.pkl".format(i))
-        # if not os.path.exists(encoding_path):
-        #     database_embedding = classify.embedding_all_data_by_directory(
-        #         os.path.join(os.getcwd(),"dataset","lfw_align"))
-        #     classify.save_embedding_to_file(database_embedding, encoding_path)
-        # else:
-        #     database_embedding = classify.load_embedding_from_file(encoding_path)
+        #Get embedding database, get no-mask face image then convert to vector
+        print("embedding")
+        encoding_path = os.path.join(os.getcwd(), "cache", "encodings", model_name, f"epoch{i}.pkl")
+        if not os.path.exists(encoding_path):
+            database_embedding = classify.embedding_all_data_by_directory(
+                os.path.join(os.getcwd(),"dataset","lfw_align"))
+            classify.save_embedding_to_file(database_embedding, encoding_path)
+        else:
+            database_embedding = classify.load_embedding_from_file(encoding_path)
 
-        # #Preprocess data, get path to image with and without mask
-        # print("predict")
-        # paths = list()
-        # mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_mask")
-        # paths.extend(file_function.getPath(mask_data_directory))
-        # paths = paths[:50]
+        #Preprocess data, get path to image with and without mask
+        print("predict")
+        paths = list()
+        mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_mask")
+        paths.extend(file_function.getPath(mask_data_directory))
+        # no_mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_align")
+        # paths.extend(file_function.getPath(no_mask_data_directory))
+        paths = paths[:50]
 
-        # # no_mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_align")
-        # # paths.extend(file_function.getPath(no_mask_data_directory))
-
-        # # Accuracy
-        # precision, recall, accuracy, f1 = classify.evaluate_using_confusion_matrix(paths, database_embedding, 
-        #                                                     thresh_hold=4, distance_formula=cosine)
-        # with open(os.path.join(os.getcwd(),"cache","metrics",model_name+".csv"), "a") as f:
-        #     row = [i, precision, recall, accuracy, f1]
-        #     writer = csv.writer(f)
-        #     writer.writerow(row)
+        # Accuracy
+        precision, recall, accuracy, f1 = classify.evaluate_using_confusion_matrix(paths, database_embedding, 
+                                                            thresh_hold=4, distance_formula=cosine)
+        with open(os.path.join(os.getcwd(),"cache","metrics",model_name+".csv"), "a") as f:
+            row = [i, precision, recall, accuracy, f1]
+            writer = csv.writer(f)
+            writer.writerow(row)
 
 
 evaluate_mask_lfw()

@@ -1,13 +1,14 @@
 
 from cmath import pi
+import os
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tensorflow_addons.losses import metric_learning
 from tensorflow.keras.layers import Input, BatchNormalization, Dropout, Flatten, Dense, Layer, Conv2D, LeakyReLU, Concatenate,\
     Lambda, Add, add, MaxPooling2D, GlobalAveragePooling2D
 from typing import Union, Callable
-from .inceptionresnetv1 import InceptionResNetV1
-from .inceptionresnetv1 import ArcFace
+from train_tensorflow.inceptionresnetv1 import InceptionResNetV1
+from train_tensorflow.inceptionresnetv1 import ArcFace
 from tensorflow.keras import regularizers
 from tensorflow.keras import backend as K
 import math
@@ -79,13 +80,32 @@ def convert_model_to_embedding(train_model, cut_position = -2, add_normalization
         train_model.input, outputs, name="embedding")
     return embedding
 
-def convert_dense_layer_to_arcface(path_weights, input_shape, number_of_class, embedding, model_name = "InceptionResNetV1"):
+def convert_dense_layer_to_arcface(path_weights, input_shape, number_of_class, embedding, model_name = "InceptionResNetV1", add_normalization = False):
     model = call_instance_model(input_shape, number_of_class, embedding, model_name, "Dense")
     model.load_weights(path_weights)
-    cut_the_last_layer = tf.keras.models.Model(
-        inputs=model.input, outputs=model.layers[-2].output)
-    outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(cut_the_last_layer.output)
-    arcface_model = tf.keras.models.Model(model.input, outputs, model_name)
+    outputs = model.layers[-2].output
+    if add_normalization:
+        outputs = BatchNormalization(momentum=0.995, epsilon=0.001,
+	                    scale=False, name='Bottleneck_BatchNorm')(outputs)
+        outputs = tf.keras.layers.Lambda(
+            lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
+    outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(outputs)
+    arcface_model = tf.keras.models.Model(inputs = model.input,outputs = outputs)
+    return arcface_model
+
+def special_convert_dense_layer_to_arcface(path_weights, input_shape, number_of_class, embedding, model_name = "InceptionResNetV1", add_normalization = False):
+    model = call_instance_model(input_shape, number_of_class, embedding, model_name, "ArcFace")
+    model.load_weights(path_weights)
+    outputs = model.layers[-3].output
+    outputs = Dropout(0.2, name='Dropout')(outputs)
+    outputs = model.layers[-2](outputs)
+    if add_normalization:
+        outputs = BatchNormalization(momentum=0.995, epsilon=0.001,
+	                    scale=False, name='Bottleneck_BatchNorm')(outputs)
+        outputs = tf.keras.layers.Lambda(
+            lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
+    outputs = LayerBeforeArcFace(number_of_class,name = "Layer_Before_ArcFace")(outputs)
+    arcface_model = tf.keras.models.Model(inputs = model.input, outputs = outputs)
     return arcface_model
 
 def call_instance_model(input_shape, number_of_class, embedding, model_name = "InceptionResNetV1",\
@@ -119,8 +139,13 @@ def call_instance_model(input_shape, number_of_class, embedding, model_name = "I
 
 if __name__ == "__main__":
     # tf.config.run_functions_eagerly(True)
-    input_shape = (128, 128, 3)
-    number_of_classes = 1000
-    model = call_instance_model(input_shape,10575,512, "InceptionResNetV2")
-   # model = convert_model_to_embedding(model)
-    model.summary()
+    model_name = "InceptionResNetV2"
+    path_dense = os.path.join(os.path.dirname(os.getcwd()), "save_model"
+                              ,"160-64-InceptionResNetV2-Dense",
+                              "epoch24.h5")
+    input_shape = [160,160,3]
+    number_of_class = 12593
+    face_net_model = convert_dense_layer_to_arcface(path_dense, input_shape,
+                                                    number_of_class, 512, model_name = model_name,
+                                                    add_normalization= True)
+    face_net_model.summary()
