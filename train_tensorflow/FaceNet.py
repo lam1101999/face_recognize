@@ -117,9 +117,20 @@ def call_instance_model(input_shape, number_of_class, embedding, model_name = "I
         embedding_model = InceptionResNetV1(input_shape, embedding)
     if model_name == "InceptionResNetV1Hard":
         embedding_model = InceptionResNetV1(input_shape, embedding, easy_version = False)
+    elif model_name == "InceptionResNetV2Old":
+        embedding_model = tf.keras.applications.InceptionResNetV2(include_top=True, weights=None,\
+                        input_shape=input_shape, classes = embedding, classifier_activation=None)
     elif model_name == "InceptionResNetV2":
         embedding_model = tf.keras.applications.InceptionResNetV2(include_top=True, weights=None,\
                         input_shape=input_shape, classes = embedding, classifier_activation=None)
+        outputs = embedding_model.layers[-2].output
+        outputs = Dropout(0.2, name='Dropout')(outputs)
+        outputs = embedding_model.layers[-1](outputs)
+        outputs = BatchNormalization(momentum=0.995, epsilon=0.001,
+	                    scale=False, name='Bottleneck_BatchNorm')(outputs)
+        outputs = tf.keras.layers.Lambda(
+            lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
+        embedding_model = tf.keras.models.Model(inputs = embedding_model.input, outputs = outputs)
     elif model_name == "EfficientNetV2M":
         embedding_model = tf.keras.applications.EfficientNetV2M(include_top=True, weights=None,\
                         input_shape=input_shape, classes = embedding, classifier_activation=None)

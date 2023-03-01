@@ -56,7 +56,7 @@ def evaluate_mask_lfw():
     format_function = FormatFunction(global_value)
     file_function = FileFunction()
 
-    for i in range(40,41):
+    for i in range(65,66):
         print("evaluate epoch: ", i)
         path_model = os.path.join(os.getcwd(),"save_model",
                                   MODEL_NAME,f"epoch{i}.h5")
