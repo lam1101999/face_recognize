@@ -1,4 +1,4 @@
-from train_tensorflow.FaceNet import call_instance_model, convert_model_to_embedding
+from train_tensorflow.models import call_instance_model, convert_model_to_embedding
 import numpy as np
 import os
 from scipy.spatial.distance import euclidean, cosine

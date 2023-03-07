@@ -11,7 +11,7 @@ from functools import partial
 from tqdm import tqdm
 tqdm = partial(tqdm, position=0, leave=True)
 import time
-from train_tensorflow.FaceNet import call_instance_model, convert_model_to_embedding
+from train_tensorflow.models import call_instance_model, convert_model_to_embedding
 
 
 class Classify:
@@ -223,7 +223,7 @@ class Classify:
     def calculate_confusion_matrix(self, list_path, embedding, thresh_hold=4, distance_formula=cosine):
         # Initialize Confusion Matrix (row is real label, column is predict label so precision is column, recall is row)
         total_label = len(embedding)
-        matrix = np.zeros((total_label, total_label))
+        matrix = np.zeros((total_label, total_label + 1)) # 1 column for unknown
 
         # give label an offset to work with matrix
         off_set = 0
@@ -241,7 +241,7 @@ class Classify:
                 image, embedding, thresh_hold, distance_formula)
             # Assign value to matrix
             offset_row = off_set_dictionary[real_label]
-            offset_column = off_set_dictionary[predict_label]
+            offset_column = off_set_dictionary[predict_label] if predict_label!="unknown" else total_label
             matrix[offset_row, offset_column] = matrix[offset_row, offset_column]+1
 
         return matrix

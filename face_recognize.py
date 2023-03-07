@@ -10,7 +10,7 @@ from wear_mask.FaceMaskDetector import FaceMaskDetector
 import tensorflow as tf
 from train_tensorflow.Classify import Classify
 from scipy.spatial.distance import cosine, euclidean
-from train_tensorflow.FaceNet import call_instance_model, convert_model_to_embedding
+from train_tensorflow.models import call_instance_model, convert_model_to_embedding
 from tool.FormatFunction import FormatFunction
 from tool.FileFunction import FileFunction
 from tool.GlobalValue import GlobalValue

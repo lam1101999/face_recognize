@@ -4,7 +4,7 @@ import cv2
 import os
 import pickle
 from sklearn.datasets import fetch_lfw_pairs
-from train_tensorflow.FaceNet import call_instance_FaceNet_with_last_ArcFace, convert_arcface_model_to_embedding,\
+from train_tensorflow.models import call_instance_FaceNet_with_last_ArcFace, convert_arcface_model_to_embedding,\
                                         convert_arcface_model_to_embeddingv2,call_instance_FaceNet_with_last_isDense,\
                                         convert_train_model_to_embedding
 from scipy.spatial.distance import cosine,euclidean
