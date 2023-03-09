@@ -48,22 +48,24 @@ def evaluate_lfw(model_controller, distance_type = "euclidean"):
 
 def evaluate_mask_lfw():
     #Init
-    model_name = "InceptionResNetV2Old"
+    model_name = "InceptionResNetV2"
     last_layer = "Dense"
-    MODEL_NAME = f"160-64-{model_name}-{last_layer}(v1)"
+    MODEL_NAME = f"160-64-{model_name}-{last_layer}"
     distance_formula = euclidean
     global_value = GlobalValue(image_size=[160,160], batch_size = 64, shuffle_size = 512, ratio_train = 0.8, epochs = 40, small_epochs = 2)
     format_function = FormatFunction(global_value)
     file_function = FileFunction()
 
-    for i in range(34,35):
+    for i in range(18,19):
         print("evaluate epoch: ", i)
         path_model = os.path.join(os.getcwd(),"save_model",
                                   MODEL_NAME,f"epoch{i}.h5")
         print(path_model)
-        model = call_instance_model((global_value.IMAGE_SIZE[0], global_value.IMAGE_SIZE[1],3), 12593, 512, model_name, last_layer)
+        model = call_instance_model((global_value.IMAGE_SIZE[0], global_value.IMAGE_SIZE[1],3), 12593, 512,last_layer, model_name)
         model.load_weights(path_model)
+        model.summary()
         model = convert_model_to_embedding(model)
+        model.summary()
         model_controller = ModelController(model = model)
         classify = Classify(model_controller, format_function)
 
@@ -77,9 +79,10 @@ def evaluate_mask_lfw():
         else:
             database_embedding = classify.load_embedding_from_file(encoding_path)
         
-        # for label, vector in database_embedding.items():
-        #     database_embedding[label] = vector/np.linalg.norm(vector)
-        #Preprocess data, get path to image with and without mask
+        for label, vector in database_embedding.items():
+            # database_embedding[label] = vector/np.linalg.norm(vector)
+            print(label, vector)
+        # Preprocess data, get path to image with and without mask
         print("predict")
         print(distance_formula)
         paths = list()

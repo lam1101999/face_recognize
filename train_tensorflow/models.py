@@ -91,11 +91,11 @@ class BatchNormalization(tf.keras.layers.BatchNormalization):
 
 
 def convert_model_to_embedding(train_model, cut_position=-2, add_normalization=False):
-    outputs = train_model.layers[cut_position].output
+    outputs = tf.keras.Sequential(train_model.layers[:-1]).output
     if add_normalization:
         outputs = tf.keras.layers.Lambda(
             lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
-    embedding = tf.keras.models.Model(
+    embedding = tf.keras.Model(
         train_model.input, outputs, name="embedding")
     return embedding
 
@@ -111,7 +111,7 @@ def convert_dense_layer_to_arcface(path_weights, input_shape, number_of_class, e
         outputs = tf.keras.layers.Lambda(
             lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
     outputs = LayerBeforeArcFace(
-        number_of_class, name="Layer_Before_ArcFace")(outputs)
+        num_classes, name="Layer_Before_ArcFace")(outputs)
     arcface_model = tf.keras.models.Model(inputs=model.input, outputs=outputs)
     return arcface_model
 
@@ -133,64 +133,65 @@ def special_convert_dense_layer_to_arcface(path_weights, input_shape, number_of_
 
 def call_instance_model(input_shape, num_classes=None, embd_shape=512, head_type=None,
                         backbone_type="InceptionResNetV1", use_pretrain=True, name="facenet"):
-    x = inputs = Input(input_shape, name='input_image')
 
-    x = Backbone(backbone_type=backbone_type, use_pretrain=use_pretrain)(x)
+    backbone = Backbone(input_shape, backbone_type=backbone_type, use_pretrain=use_pretrain)
 
-    embds = OutputLayer(embd_shape)(x)
-
+    embds = OutputLayer(backbone, embd_shape)
     # Create last layer
     if head_type is not None:
         assert num_classes is not None
         if head_type == "ArcFace":
-            logist = LayerBeforeArcFace(number_of_class=num_classes)(embds)
+            logist = LayerBeforeArcFace(num_classes=num_classes)(embds.output)
         elif head_type == "Dense":
-            logist = Dense(num_classes)(embds)
-        return Model(inputs, logist, name=name)
+            logist = Dense(num_classes)(embds.output)
+        return Model(embds.input, logist, name=name)
     else:
-        return Model(inputs, embds, name=name)
+        return embds
 
 
-def Backbone(backbone_type='ResNet50', use_pretrain=True):
+def Backbone(input_shape, backbone_type='ResNet50', use_pretrain=True):
     """Backbone Model"""
     weights = None
     if use_pretrain:
         weights = 'imagenet'
-    def backbone(x_in):
-        if backbone_type == 'ResNet50':
-            return  ResNet50(input_shape=x_in.shape[1:], include_top=False,
-                            weights=weights)(x_in)
-        elif backbone_type == 'MobileNetV2':
-            return MobileNetV2(input_shape=x_in.shape[1:], include_top=False,
-                            weights=weights)(x_in)
-        elif backbone_type == "InceptionResNetV2":
-            return InceptionResNetV2(input_shape=x_in.shape[1:], include_top=False,
-                                    weights=weights)(x_in)
-        else:
-            raise TypeError('backbone_type error!')
-    return backbone
+    model:Model = None
+    if backbone_type == 'ResNet50':
+        model = ResNet50(input_shape=input_shape, include_top=False,
+                         weights=weights)
+    elif backbone_type == 'MobileNetV2':
+        model = MobileNetV2(input_shape=input_shape, include_top=False,
+                            weights=weights)
+    elif backbone_type == "InceptionResNetV2":
+        model = InceptionResNetV2(input_shape=input_shape, include_top=False,
+                                  weights=weights)
+    if model is None:
+        raise TypeError('backbone_type error!')
+    return model
 
 
-def OutputLayer(embd_shape, w_decay=5e-4, name='OutputLayer'):
+def OutputLayer(backbone, embd_shape, w_decay=5e-4, name='OutputLayer'):
     """Output Later"""
-    def output_layer(x_in):
-        x = inputs = Input(x_in.shape[1:])
-        x = BatchNormalization()(x)
-        x = Dropout(rate=0.5)(x)
-        x = Flatten()(x)
-        x = Dense(embd_shape, kernel_regularizer="l2")(x)
-        x = BatchNormalization()(x)
-        return Model(inputs, x, name=name)(x_in)
-    return output_layer
+    x = backbone.output
+    x = BatchNormalization()(x)
+    x = Dropout(rate=0.5)(x)
+    x = Flatten()(x)
+    x = Dense(embd_shape, kernel_regularizer="l2")(x)
+    x = BatchNormalization()(x)
+    return Model(backbone.input, x, name=name)
 
 
 if __name__ == "__main__":
     # tf.config.run_functions_eagerly(True)
-    model_name = "InceptionResNetV2"
+    backbone_type = "InceptionResNetV2"
+    head_type = "ArcFace"
     input_shape = [160, 160, 3]
     number_of_class = 12593
+    embd_shape = 512
 
-    model = call_instance_model(
-        [160, 160, 3], number_of_class, 512, model_name, "ArcFace")
-    model = convert_model_to_embedding(model)
+    model = call_instance_model([160, 160, 3], number_of_class, embd_shape, 
+                                head_type,backbone_type,use_pretrain=False,
+                                name="faceneet")
+
+    # model = convert_model_to_embedding(model)
     model.summary()
+    tf.keras.utils.plot_model(model, to_file="model.png", show_shapes=True)
