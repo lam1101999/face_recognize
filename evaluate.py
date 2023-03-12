@@ -4,9 +4,10 @@ import cv2
 import os
 import pickle
 import csv
+import tensorflow as tf
 from sklearn.datasets import fetch_lfw_pairs
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score,precision_recall_fscore_support
-from train_tensorflow.models import convert_model_to_embedding, call_instance_model
+from train_tensorflow.models import convert_model_to_embedding, call_instance_model,call_instance_model_old
 from train_tensorflow.Classify import Classify
 from scipy.spatial.distance import cosine,euclidean
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
@@ -56,19 +57,18 @@ def evaluate_mask_lfw():
     format_function = FormatFunction(global_value)
     file_function = FileFunction()
 
-    for i in range(18,19):
+    for i in range(40,41):
         print("evaluate epoch: ", i)
         path_model = os.path.join(os.getcwd(),"save_model",
                                   MODEL_NAME,f"epoch{i}.h5")
         print(path_model)
         model = call_instance_model((global_value.IMAGE_SIZE[0], global_value.IMAGE_SIZE[1],3), 12593, 512,last_layer, model_name)
         model.load_weights(path_model)
-        model.summary()
-        model = convert_model_to_embedding(model)
-        model.summary()
+        model = convert_model_to_embedding(model, cut_position=-3)
         model_controller = ModelController(model = model)
         classify = Classify(model_controller, format_function)
-
+        tf.keras.utils.plot_model(model, to_file="model.png", show_shapes=True)
+        
         #Get embedding database, get no-mask face image then convert to vector
         print("embedding")
         encoding_path = os.path.join(os.getcwd(), "cache", "encodings", MODEL_NAME, f"epoch{i}.pkl")
@@ -82,21 +82,22 @@ def evaluate_mask_lfw():
         for label, vector in database_embedding.items():
             # database_embedding[label] = vector/np.linalg.norm(vector)
             print(label, vector)
+            
         # Preprocess data, get path to image with and without mask
-        print("predict")
-        print(distance_formula)
-        paths = list()
-        mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_mask")
-        paths.extend(file_function.getPath(mask_data_directory))
-        # no_mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_align")
-        # paths.extend(file_function.getPath(no_mask_data_directory))
-        # Accuracy
-        precision, recall, accuracy, f1 = classify.evaluate_using_confusion_matrix(paths, database_embedding, 
-                                                            thresh_hold=4, distance_formula=distance_formula)
-        with open(os.path.join(os.getcwd(),"cache","metrics",MODEL_NAME+".csv"), "a",  newline =  '') as f:
-            row = [i, precision, recall, accuracy, f1]
-            writer = csv.writer(f)
-            writer.writerow(row)
+        # print("predict")
+        # print(distance_formula)
+        # paths = list()
+        # mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_mask")
+        # paths.extend(file_function.getPath(mask_data_directory))
+        # # no_mask_data_directory = os.path.join(os.getcwd(), "dataset", "lfw_align")
+        # # paths.extend(file_function.getPath(no_mask_data_directory))
+        # # Accuracy
+        # precision, recall, accuracy, f1 = classify.evaluate_using_confusion_matrix(paths, database_embedding, 
+        #                                                     thresh_hold=4, distance_formula=distance_formula)
+        # with open(os.path.join(os.getcwd(),"cache","metrics",MODEL_NAME+".csv"), "a",  newline =  '') as f:
+        #     row = [i, precision, recall, accuracy, f1]
+        #     writer = csv.writer(f)
+        #     writer.writerow(row)
 
 
 evaluate_mask_lfw()
