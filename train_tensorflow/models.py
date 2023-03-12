@@ -91,7 +91,7 @@ class BatchNormalization(tf.keras.layers.BatchNormalization):
 
 
 def convert_model_to_embedding(train_model, cut_position=-2, add_normalization=False):
-    outputs = tf.keras.Sequential(train_model.layers[:-1]).output
+    outputs = train_model.layers[cut_position].output
     if add_normalization:
         outputs = tf.keras.layers.Lambda(
             lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
@@ -130,6 +130,45 @@ def special_convert_dense_layer_to_arcface(path_weights, input_shape, number_of_
     arcface_model = tf.keras.models.Model(inputs=model.input, outputs=outputs)
     return arcface_model
 
+def call_instance_model_old(input_shape, num_classes, embd_shape, head_type = "Dense",
+                            backbone_type = "InceptionResNetV1"):
+    
+    # Create model structure
+    embedding_model = None
+    if backbone_type == "InceptionResNetV1":
+        embedding_model = InceptionResNetV1(input_shape, embd_shape)
+    if backbone_type == "InceptionResNetV1Hard":
+        embedding_model = InceptionResNetV1(input_shape, embd_shape, easy_version = False)
+    elif backbone_type == "InceptionResNetV2Old":
+        embedding_model = tf.keras.applications.InceptionResNetV2(include_top=True, weights=None,\
+                        input_shape=input_shape, classes = embd_shape, classifier_activation=None)
+    elif backbone_type == "InceptionResNetV2":
+        embedding_model = tf.keras.applications.InceptionResNetV2(include_top=True, weights=None,\
+                        input_shape=input_shape, classes = embd_shape, classifier_activation=None)
+        outputs = embedding_model.layers[-2].output
+        outputs = Dropout(0.2, name='Dropout')(outputs)
+        outputs = embedding_model.layers[-1](outputs)
+        outputs = BatchNormalization(momentum=0.995, epsilon=0.001,
+	                    scale=False, name='Bottleneck_BatchNorm')(outputs)
+        outputs = tf.keras.layers.Lambda(
+            lambda x: tf.math.l2_normalize(x, axis=1))(outputs)
+        embedding_model = tf.keras.models.Model(inputs = embedding_model.input, outputs = outputs)
+    elif backbone_type == "EfficientNetV2M":
+        embedding_model = tf.keras.applications.EfficientNetV2M(include_top=True, weights=None,\
+                        input_shape=input_shape, classes = embd_shape, classifier_activation=None)
+        
+    # Create last layer
+    outputs = None
+    if head_type == "Dense":
+        outputs = tf.keras.layers.Dense(
+        num_classes, use_bias=False, name='Bottleneck_train')(embedding_model.output)
+    elif head_type == "ArcFace":
+        outputs = LayerBeforeArcFace(num_classes,name = "Layer_Before_ArcFace")(embedding_model.output)
+    
+    # Create model from input and output
+    model = tf.keras.models.Model(
+        embedding_model.input, outputs, name=backbone_type)
+    return model
 
 def call_instance_model(input_shape, num_classes=None, embd_shape=512, head_type=None,
                         backbone_type="InceptionResNetV1", use_pretrain=True, name="facenet"):
